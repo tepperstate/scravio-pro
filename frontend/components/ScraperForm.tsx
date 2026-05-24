@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 
+import api from '../lib/api'
+
 interface ScraperFormProps {
   platform: string
   onComplete: () => void
@@ -35,13 +37,17 @@ export default function ScraperForm({ platform, onComplete }: ScraperFormProps) 
     setIsLoading(true)
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      await api.post('/scrape/start', {
+        platform: platform,
+        query: query.trim(),
+        max_results: maxResults
+      });
       
       toast.success(`Scraping started for ${query} on ${config.name}!`)
       onComplete()
-    } catch (error) {
-      toast.error('Failed to start scraping. Please try again.')
+    } catch (error: any) {
+      const message = error.response?.data?.detail || 'Failed to start scraping. Please try again.';
+      toast.error(message)
     } finally {
       setIsLoading(false)
     }

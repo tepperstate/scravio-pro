@@ -25,7 +25,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onSu
   if (!isOpen) return null
 
   const getApiUrl = () => {
-    let url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+    let url = process.env.NEXT_PUBLIC_API_URL || 'https://scravio-backend.onrender.com/api/v1';
     // Fix trailing slashes
     url = url.replace(/\/+$/, '');
     // Ensure it ends with /api/v1 if it's the backend root

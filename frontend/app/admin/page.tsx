@@ -29,8 +29,9 @@ export default function AdminPage() {
           fetchUsers()
         }
       } catch (error) {
-        toast.error("Authentication failed.")
-        router.push('/')
+        toast.error("Authentication failed. Please log in again.")
+        localStorage.removeItem('scravio_token')
+        window.location.href = '/'
       }
     }
     

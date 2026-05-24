@@ -66,7 +66,9 @@ export default function Dashboard({ onBack }: DashboardProps) {
       
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
-      toast.error('Failed to load dashboard data.')
+      toast.error('Failed to load dashboard data. Please log in again.')
+      localStorage.removeItem('scravio_token')
+      window.location.href = '/'
     } finally {
       setIsLoading(false)
     }
@@ -178,6 +180,15 @@ export default function Dashboard({ onBack }: DashboardProps) {
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-medium" title={userName}>
                   {userInitials}
                 </div>
+                <button 
+                  onClick={() => {
+                    localStorage.removeItem('scravio_token')
+                    window.location.href = '/'
+                  }}
+                  className="text-sm font-medium text-slate-500 hover:text-slate-900 transition"
+                >
+                  Log Out
+                </button>
               </div>
             </div>
           </div>

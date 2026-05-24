@@ -1,21 +1,30 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Hero from '@/components/Hero'
 import PlatformSelector from '@/components/PlatformSelector'
 import ScraperForm from '@/components/ScraperForm'
 import Dashboard from '@/components/Dashboard'
 import StatsBar from '@/components/StatsBar'
+import AuthModal from '@/components/AuthModal'
 
 export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null)
   const [showDashboard, setShowDashboard] = useState(false)
+  const [authModal, setAuthModal] = useState<{isOpen: boolean, mode: 'login' | 'register'}>({ isOpen: false, mode: 'login' })
+
+  useEffect(() => {
+    const token = localStorage.getItem('scravio_token')
+    if (token) {
+      setIsLoggedIn(true)
+    }
+  }, [])
 
   const handleStartScraping = (platform: string) => {
     setSelectedPlatform(platform)
     if (!isLoggedIn) {
-      setIsLoggedIn(true)
+      setAuthModal({ isOpen: true, mode: 'register' })
     }
   }
 
@@ -54,10 +63,16 @@ export default function Home() {
                 </button>
               ) : (
                 <>
-                  <button className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition">
+                  <button 
+                    onClick={() => setAuthModal({ isOpen: true, mode: 'login' })}
+                    className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition"
+                  >
                     Sign In
                   </button>
-                  <button className="px-4 py-2 text-sm font-medium text-white gradient-primary rounded-lg hover:opacity-90 transition">
+                  <button 
+                    onClick={() => setAuthModal({ isOpen: true, mode: 'register' })}
+                    className="px-4 py-2 text-sm font-medium text-white gradient-primary rounded-lg hover:opacity-90 transition"
+                  >
                     Get Started Free
                   </button>
                 </>
@@ -162,6 +177,18 @@ export default function Home() {
           </footer>
         </>
       )}
+
+      <AuthModal 
+        key={authModal.mode}
+        isOpen={authModal.isOpen}
+        initialMode={authModal.mode}
+        onClose={() => setAuthModal({ ...authModal, isOpen: false })}
+        onSuccess={() => {
+          setAuthModal({ ...authModal, isOpen: false })
+          setIsLoggedIn(true)
+          setShowDashboard(true)
+        }}
+      />
     </main>
   )
 }

@@ -40,10 +40,6 @@ services:
         sync: false
       - key: CELERY_RESULT_BACKEND
         sync: false
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_KEY
-        sync: false
 
   # Frontend Next.js Application
   - type: web

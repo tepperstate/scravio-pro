@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.database import Base, engine
 from app.api import auth, scraping, exports
 from app.schemas.schemas import HealthCheck
+from app.core.seed import seed_db
 
 # Configure logging
 logging.basicConfig(
@@ -90,6 +91,11 @@ app.include_router(exports.router, prefix=settings.API_V1_STR)
 async def startup_event():
     logger.info(f"Starting {settings.PROJECT_NAME} v{settings.VERSION}")
     logger.info(f"Database: {settings.DATABASE_URL[:50]}...")
+    try:
+        seed_db()
+        logger.info("Database seeding completed.")
+    except Exception as e:
+        logger.error(f"Failed to seed database: {e}")
 
 
 # Shutdown event

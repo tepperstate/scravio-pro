@@ -31,6 +31,7 @@ class User(Base):
     company = Column(String(255))
     is_active = Column(Boolean, default=True)
     is_premium = Column(Boolean, default=False)
+    is_admin = Column(Boolean, default=False)
     credits_remaining = Column(Integer, default=100)
     credits_reset_date = Column(DateTime)
     created_at = Column(DateTime, server_default=func.now())

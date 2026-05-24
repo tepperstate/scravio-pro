@@ -52,7 +52,4 @@ services:
     startCommand: npm start
     envVars:
       - key: NEXT_PUBLIC_API_URL
-        fromService:
-          type: web
-          name: scravio-backend
-          property: url
+        sync: false

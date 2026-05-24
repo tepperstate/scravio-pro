@@ -21,7 +21,7 @@ openpyxl==3.1.2
 pandas==2.1.4
 groq==0.4.2
 langchain==0.1.0
-langchain-groq==0.0.2
+langchain-groq==0.1.0
 python-multipart==0.0.6
 python-jose==3.3.0
 passlib==1.7.4

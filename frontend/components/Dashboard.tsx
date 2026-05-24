@@ -64,11 +64,15 @@ export default function Dashboard({ onBack }: DashboardProps) {
       const emailsRes = await api.get('/scrape/emails?page=1&page_size=50')
       setEmails(emailsRes.data.emails)
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching dashboard data:', error)
-      toast.error('Failed to load dashboard data. Please log in again.')
-      localStorage.removeItem('scravio_token')
-      window.location.href = '/'
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        toast.error('Authentication failed or expired. Please log in again.')
+        localStorage.removeItem('scravio_token')
+        window.location.href = '/'
+      } else {
+        toast.error('Failed to load dashboard data.')
+      }
     } finally {
       setIsLoading(false)
     }

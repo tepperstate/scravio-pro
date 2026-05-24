@@ -28,10 +28,16 @@ export default function AdminPage() {
           setIsVerifying(false)
           fetchUsers()
         }
-      } catch (error) {
-        toast.error("Authentication failed. Please log in again.")
-        localStorage.removeItem('scravio_token')
-        window.location.href = '/'
+      } catch (error: any) {
+        console.error("Admin verification error:", error);
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          toast.error("Authentication failed or forbidden. Please log in again.")
+          localStorage.removeItem('scravio_token')
+          window.location.href = '/'
+        } else {
+          toast.error("An error occurred while verifying admin access.")
+          setIsVerifying(false)
+        }
       }
     }
     

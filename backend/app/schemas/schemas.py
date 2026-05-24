@@ -41,8 +41,8 @@ class UserResponse(UserBase):
     is_active: Optional[bool] = True
     is_premium: Optional[bool] = False
     is_admin: Optional[bool] = False
-    credits_remaining: int
-    created_at: datetime
+    credits_remaining: Optional[int] = 0
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

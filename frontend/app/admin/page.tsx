@@ -158,10 +158,10 @@ export default function AdminPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-slate-900">{user.credits_remaining.toLocaleString()}</div>
+                        <div className="text-sm font-medium text-slate-900">{(user.credits_remaining || 0).toLocaleString()}</div>
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-500">
-                        {new Date(user.created_at).toLocaleDateString()}
+                        {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
                       </td>
                       <td className="px-6 py-4 text-right text-sm font-medium">
                         <button 
@@ -196,7 +196,7 @@ export default function AdminPage() {
               <h3 className="text-xl font-bold text-slate-900 mb-2">Add Credits</h3>
               <p className="text-slate-500 text-sm mb-6">
                 Adding credits to <span className="font-semibold text-slate-700">{selectedUser.email}</span>.
-                Current balance: <span className="font-semibold text-slate-700">{selectedUser.credits_remaining.toLocaleString()}</span>
+                Current balance: <span className="font-semibold text-slate-700">{(selectedUser.credits_remaining || 0).toLocaleString()}</span>
               </p>
               
               <div className="mb-6">

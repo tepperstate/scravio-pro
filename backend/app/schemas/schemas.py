@@ -40,6 +40,7 @@ class UserResponse(UserBase):
     id: int
     is_active: bool
     is_premium: bool
+    is_admin: bool = False
     credits_remaining: int
     created_at: datetime
 

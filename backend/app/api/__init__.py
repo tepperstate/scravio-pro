@@ -1,3 +1,3 @@
-from app.api import auth, scraping, exports
+from . import auth, scraping, exports, admin
 
-__all__ = ['auth', 'scraping', 'exports']
+__all__ = ["auth", "scraping", "exports", "admin"]

@@ -130,6 +130,21 @@ class CampaignStatus(BaseModel):
         from_attributes = True
 
 
+class AdminStats(BaseModel):
+    total_users: int
+    total_campaigns: int
+    total_emails_scraped: int
+    total_valid_emails: int
+    total_credits_distributed: int
+
+
+class UserUpdateRequest(BaseModel):
+    is_admin: Optional[bool] = None
+    is_active: Optional[bool] = None
+    is_premium: Optional[bool] = None
+    credits_remaining: Optional[int] = None
+
+
 class HealthCheck(BaseModel):
     status: str
     version: str

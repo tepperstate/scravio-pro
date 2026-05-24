@@ -38,9 +38,9 @@ class UserLogin(BaseModel):
 
 class UserResponse(UserBase):
     id: int
-    is_active: bool
-    is_premium: bool
-    is_admin: bool = False
+    is_active: Optional[bool] = True
+    is_premium: Optional[bool] = False
+    is_admin: Optional[bool] = False
     credits_remaining: int
     created_at: datetime
 

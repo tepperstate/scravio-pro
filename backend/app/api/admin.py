@@ -58,10 +58,10 @@ async def list_all_campaigns(
         CampaignStatus(
             id=c.id,
             name=f"{c.name} (User #{c.user_id})",
-            platform=c.platform.value,
+            platform=getattr(c.platform, 'value', str(c.platform)),
             status=c.status,
-            total_scraped=c.total_scraped,
-            valid_emails=c.valid_emails,
+            total_scraped=c.total_scraped or 0,
+            valid_emails=c.valid_emails or 0,
             progress=100.0 if c.status == "completed" else (50.0 if c.status == "running" else 0.0),
             created_at=c.created_at,
             completed_at=c.completed_at

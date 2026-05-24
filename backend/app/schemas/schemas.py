@@ -123,7 +123,7 @@ class CampaignStatus(BaseModel):
     total_scraped: int
     valid_emails: int
     progress: float
-    created_at: datetime
+    created_at: Optional[datetime] = None
     completed_at: Optional[datetime]
 
     class Config:

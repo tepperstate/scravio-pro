@@ -25,7 +25,16 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onSu
   if (!isOpen) return null
 
   const getApiUrl = () => {
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
+    let url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+    // Fix trailing slashes
+    url = url.replace(/\/+$/, '');
+    // Ensure it ends with /api/v1 if it's the backend root
+    if (url.startsWith('http') && !url.endsWith('/api/v1') && !url.endsWith('/api')) {
+      url += '/api/v1';
+    } else if (url.endsWith('/api')) {
+      url += '/v1';
+    }
+    return url;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,7 +72,18 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onSu
         setMode('login')
       }
     } catch (error: any) {
-      const message = error.response?.data?.detail || 'An error occurred. Please try again.'
+      console.error("Auth error:", error);
+      let message = 'An error occurred. Please try again.';
+      if (error.response) {
+         message = error.response.data?.detail || `Server error: ${error.response.status}`;
+         if (Array.isArray(message)) {
+             message = message.map((err: any) => err.msg).join(', ');
+         }
+      } else if (error.request) {
+         message = `Network error. Could not connect to: ${getApiUrl()}`;
+      } else {
+         message = error.message;
+      }
       toast.error(message)
     } finally {
       setIsLoading(false)

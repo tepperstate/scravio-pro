@@ -360,8 +360,9 @@
             <ul id="scravio-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;"></ul>
           </div>
           <div style="padding: 20px; border-top: 1px solid #f3f4f6; display: flex; flex-direction: column; gap: 10px;">
-            <div style="display: flex; gap: 10px;">
-              <button id="scravio-start" style="flex: 1; padding: 10px; background: #0ea5e9; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Start Fetching</button>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button id="scravio-start" style="flex: 1; padding: 10px; background: #0ea5e9; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; min-width: 140px;">Fetch Followers</button>
+              <button id="scravio-start-engagers" style="flex: 1; padding: 10px; background: #f59e0b; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; min-width: 140px;">Fetch Engagers (Likers)</button>
               <button id="scravio-stop" style="flex: 1; padding: 10px; background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: none;">Stop</button>
             </div>
             <button id="scravio-csv" style="padding: 10px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;" disabled>Download CSV</button>
@@ -378,6 +379,7 @@
     });
 
     document.getElementById('scravio-start').addEventListener('click', startFetching);
+    document.getElementById('scravio-start-engagers').addEventListener('click', startFetchingEngagers);
     document.getElementById('scravio-stop').addEventListener('click', () => {
       shouldStopFetching = true;
       document.getElementById('scravio-status').innerText = 'Stopped fetching.';
@@ -389,6 +391,7 @@
 
   function updateButtons(fetching) {
     document.getElementById('scravio-start').style.display = fetching ? 'none' : 'block';
+    document.getElementById('scravio-start-engagers').style.display = fetching ? 'none' : 'block';
     document.getElementById('scravio-stop').style.display = fetching ? 'block' : 'none';
     document.getElementById('scravio-csv').disabled = fetching || fetchedFollowersList.length === 0;
     document.getElementById('scravio-send').disabled = fetching || fetchedFollowersList.length === 0;
@@ -473,6 +476,144 @@
       } else {
         document.getElementById('scravio-status').innerText = `Finished. Total: ${fetchedFollowersList.length}`;
       }
+    } catch (err) {
+      document.getElementById('scravio-status').innerText = 'Error: ' + err.message;
+      console.error(err);
+    } finally {
+      isFetching = false;
+      updateButtons(false);
+    }
+  }
+
+  async function startFetchingEngagers() {
+    isFetching = true;
+    shouldStopFetching = false;
+    fetchedFollowersList = [];
+    document.getElementById('scravio-list').innerHTML = '';
+    updateButtons(true);
+    
+    try {
+      let userId = getUserId();
+      const username = window.location.pathname.replace(/\//g, '');
+      if (!userId && username) {
+        document.getElementById('scravio-status').innerText = 'Resolving username...';
+        const res = await fetch(`https://www.instagram.com/web/search/topsearch/?context=blended&query=${username}`);
+        const data = await res.json();
+        const user = data.users.find(u => u.user.username === username);
+        if (user) userId = user.user.pk;
+      }
+
+      if (!userId) {
+        document.getElementById('scravio-status').innerText = 'Error: Could not find User ID. Refresh the page.';
+        updateButtons(false);
+        return;
+      }
+
+      const csrf = getCsrfToken();
+      
+      document.getElementById('scravio-status').innerText = 'Fetching recent posts...';
+      
+      // Fetch recent posts
+      const postsRes = await fetch(`https://www.instagram.com/api/v1/feed/user/${userId}/?count=10`, {
+        credentials: 'include',
+        headers: {
+          'x-ig-app-id': '936619743392459',
+          'x-csrftoken': csrf,
+          'x-asbd-id': '129477',
+          'x-requested-with': 'XMLHttpRequest'
+        }
+      });
+      
+      if (!postsRes.ok) throw new Error('Failed to fetch posts');
+      const postsData = await postsRes.json();
+      const items = postsData.items || [];
+      
+      if (items.length === 0) {
+        document.getElementById('scravio-status').innerText = 'No posts found to scrape.';
+        isFetching = false;
+        updateButtons(false);
+        return;
+      }
+
+      for (let i = 0; i < items.length; i++) {
+        if (shouldStopFetching) break;
+        const item = items[i];
+        
+        document.getElementById('scravio-status').innerText = `Fetching likers for post ${i+1}/${items.length}... (${fetchedFollowersList.length} total)`;
+        
+        try {
+          const likersRes = await fetch(`https://www.instagram.com/api/v1/media/${item.id}/likers/`, {
+            credentials: 'include',
+            headers: {
+              'x-ig-app-id': '936619743392459',
+              'x-csrftoken': csrf,
+              'x-asbd-id': '129477',
+              'x-requested-with': 'XMLHttpRequest'
+            }
+          });
+          
+          if (likersRes.ok) {
+            const likersData = await likersRes.json();
+            const users = likersData.users || [];
+            
+            const newBatch = users.map(u => ({
+              username: u.username,
+              fullName: u.full_name,
+              isPrivate: u.is_private
+            }));
+            
+            const existingUsernames = new Set(fetchedFollowersList.map(f => f.username));
+            const uniqueNewBatch = newBatch.filter(u => !existingUsernames.has(u.username));
+            
+            fetchedFollowersList = fetchedFollowersList.concat(uniqueNewBatch);
+            appendToList(uniqueNewBatch);
+          }
+        } catch (e) {
+          console.error(`Failed to fetch likers for post ${item.id}`, e);
+        }
+        
+        await new Promise(r => setTimeout(r, 1500 + Math.random() * 1000));
+        
+        if (shouldStopFetching) break;
+
+        document.getElementById('scravio-status').innerText = `Fetching commenters for post ${i+1}/${items.length}... (${fetchedFollowersList.length} total)`;
+
+        try {
+          const commentsRes = await fetch(`https://www.instagram.com/api/v1/media/${item.id}/comments/`, {
+            credentials: 'include',
+            headers: {
+              'x-ig-app-id': '936619743392459',
+              'x-csrftoken': csrf,
+              'x-asbd-id': '129477',
+              'x-requested-with': 'XMLHttpRequest'
+            }
+          });
+          
+          if (commentsRes.ok) {
+            const commentsData = await commentsRes.json();
+            const comments = commentsData.comments || [];
+            
+            const newBatch = comments.map(c => ({
+              username: c.user.username,
+              fullName: c.user.full_name,
+              isPrivate: c.user.is_private
+            }));
+            
+            const existingUsernames = new Set(fetchedFollowersList.map(f => f.username));
+            const uniqueNewBatch = newBatch.filter(u => !existingUsernames.has(u.username));
+            
+            fetchedFollowersList = fetchedFollowersList.concat(uniqueNewBatch);
+            appendToList(uniqueNewBatch);
+          }
+        } catch (e) {
+          console.error(`Failed to fetch commenters for post ${item.id}`, e);
+        }
+        
+        await new Promise(r => setTimeout(r, 1500 + Math.random() * 1000));
+      }
+      
+      document.getElementById('scravio-status').innerText = `Finished extracting engagers. Total: ${fetchedFollowersList.length}`;
+      
     } catch (err) {
       document.getElementById('scravio-status').innerText = 'Error: ' + err.message;
       console.error(err);

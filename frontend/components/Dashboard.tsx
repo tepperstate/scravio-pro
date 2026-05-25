@@ -44,6 +44,10 @@ export default function Dashboard({ onBack }: DashboardProps) {
   const [selectedCampaigns, setSelectedCampaigns] = useState<number[]>([])
   const [selectedEmails, setSelectedEmails] = useState<number[]>([])
 
+  const [importFileUsernames, setImportFileUsernames] = useState<string[]>([])
+  const [importFileName, setImportFileName] = useState<string>('')
+  const [importPlatform, setImportPlatform] = useState<string>('instagram')
+
   const handleBatchDeleteCampaigns = async () => {
     if (selectedCampaigns.length === 0) return;
     if (!window.confirm(`Are you sure you want to delete ${selectedCampaigns.length} campaigns?`)) return;
@@ -224,29 +228,46 @@ export default function Dashboard({ onBack }: DashboardProps) {
           return;
         }
 
-        const platform = file.name.toLowerCase().includes('instagram') ? 'instagram' : 'instagram'; // Defaulting to instagram for extension
-
-        toast.success(`Found ${usernames.length} profiles. Starting import...`);
+        const guessedPlatform = file.name.toLowerCase().includes('tiktok') ? 'tiktok' : 
+                               file.name.toLowerCase().includes('facebook') ? 'facebook' :
+                               file.name.toLowerCase().includes('linkedin') ? 'linkedin' :
+                               file.name.toLowerCase().includes('twitter') ? 'twitter' :
+                               file.name.toLowerCase().includes('youtube') ? 'youtube' : 'instagram';
         
-        await api.post('/scrape/import', {
-          platform: platform,
-          usernames: usernames,
-          name: `Extension Import - ${new Date().toLocaleDateString()}`
-        });
-
-        toast.success('Import campaign started successfully!');
-        setActiveTab('campaigns');
-        fetchData();
+        setImportPlatform(guessedPlatform);
+        setImportFileName(file.name);
+        setImportFileUsernames(usernames);
+        toast.success(`Found ${usernames.length} profiles. Please select platform and execute.`);
 
       } catch (error: any) {
         console.error('Import error:', error);
-        toast.error(error.response?.data?.detail || 'Failed to import CSV.');
+        toast.error(error.response?.data?.detail || 'Failed to parse CSV.');
       }
     };
     reader.readAsText(file);
     
     // Reset file input
     e.target.value = '';
+  }
+
+  const handleExecuteImport = async () => {
+    if (importFileUsernames.length === 0) return;
+    try {
+      toast.success(`Starting import for ${importFileUsernames.length} profiles...`);
+      await api.post('/scrape/import', {
+        platform: importPlatform,
+        usernames: importFileUsernames,
+        name: `${importPlatform.charAt(0).toUpperCase() + importPlatform.slice(1)} Import - ${new Date().toLocaleDateString()}`
+      });
+      toast.success('Import campaign started successfully!');
+      setActiveTab('campaigns');
+      setImportFileUsernames([]);
+      setImportFileName('');
+      fetchData();
+    } catch (error: any) {
+      console.error('Import error:', error);
+      toast.error(error.response?.data?.detail || 'Failed to start import.');
+    }
   }
 
   // Calculate some overview stats
@@ -666,6 +687,41 @@ export default function Dashboard({ onBack }: DashboardProps) {
                         <p className="text-sm text-slate-400 mt-2">or drag and drop here</p>
                       </div>
                     </div>
+                    
+                    {importFileUsernames.length > 0 && (
+                      <div className="mt-6 p-6 bg-slate-50 border border-slate-200 rounded-xl text-left">
+                        <h4 className="font-semibold text-slate-900 mb-2">Ready to Import</h4>
+                        <p className="text-sm text-slate-600 mb-4">
+                          File <strong>{importFileName}</strong> parsed successfully. Found <strong>{importFileUsernames.length}</strong> profiles.
+                        </p>
+                        
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-slate-700 mb-1">Target Platform</label>
+                          <select 
+                            value={importPlatform}
+                            onChange={(e) => setImportPlatform(e.target.value)}
+                            className="w-full rounded-lg border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white"
+                          >
+                            <option value="instagram">Instagram</option>
+                            <option value="facebook">Facebook</option>
+                            <option value="linkedin">LinkedIn</option>
+                            <option value="tiktok">TikTok</option>
+                            <option value="twitter">Twitter</option>
+                            <option value="youtube">YouTube</option>
+                          </select>
+                        </div>
+                        
+                        <button 
+                          onClick={handleExecuteImport}
+                          className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-md transition flex items-center justify-center gap-2"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                          Execute Email Finder
+                        </button>
+                      </div>
+                    )}
 
                     <div className="mt-8 pt-8 border-t border-slate-200">
                       <h4 className="font-semibold text-slate-900 mb-2">Need the extension?</h4>

@@ -57,14 +57,23 @@ async def start_scraping(
     db.refresh(campaign)
     
     # Queue background task
-    from app.services.celery_tasks import scrape_platform
-    scrape_platform.delay(
-        user_id=current_user.id,
-        platform=request.platform.value,
-        query=request.query,
-        max_results=request.max_results,
-        campaign_id=campaign.id
-    )
+    try:
+        from app.services.celery_tasks import scrape_platform
+        scrape_platform.delay(
+            user_id=current_user.id,
+            platform=request.platform.value,
+            query=request.query,
+            max_results=request.max_results,
+            campaign_id=campaign.id
+        )
+    except Exception as e:
+        campaign.status = "failed"
+        db.commit()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Background task queue failed. Ensure Redis is running and CELERY_BROKER_URL is correctly set. Error: {str(e)}"
+        )
+
     
     return ScraperResponse(
         campaign_id=campaign.id,
@@ -110,13 +119,21 @@ async def import_scraping(
     db.refresh(campaign)
     
     # Queue background task
-    from app.services.celery_tasks import scrape_platform_batch
-    scrape_platform_batch.delay(
-        user_id=current_user.id,
-        platform=request.platform.value,
-        profiles=request.usernames,
-        campaign_id=campaign.id
-    )
+    try:
+        from app.services.celery_tasks import scrape_platform_batch
+        scrape_platform_batch.delay(
+            user_id=current_user.id,
+            platform=request.platform.value,
+            profiles=request.usernames,
+            campaign_id=campaign.id
+        )
+    except Exception as e:
+        campaign.status = "failed"
+        db.commit()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Background task queue failed. Ensure Redis is running and CELERY_BROKER_URL is correctly set. Error: {str(e)}"
+        )
     
     return ScraperResponse(
         campaign_id=campaign.id,

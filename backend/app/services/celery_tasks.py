@@ -97,7 +97,7 @@ def scrape_platform(self, user_id: int, platform: str, query: str,
                     
                     email_record = {
                         'email': email_data['email'],
-                        'platform': platform.upper(),
+                        'platform': PlatformEnum[platform.upper()],
                         'source_username': email_data.get('source_username'),
                         'source_profile_url': result.profile_data.get('profile_url') if result.profile_data else None,
                         'first_name': result.profile_data.get('first_name') if result.profile_data else None,
@@ -154,6 +154,108 @@ def scrape_platform(self, user_id: int, platform: str, query: str,
         
     finally:
         db.close()
+
+
+@celery_app.task(bind=True, name='scrape_platform_batch')
+def scrape_platform_batch(self, user_id: int, platform: str, profiles: List[str], campaign_id: int):
+    """
+    Main scraping task for a batch of explicit profiles
+    """
+    db = SessionLocal()
+    
+    try:
+        campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+        if campaign:
+            campaign.status = 'running'
+            db.commit()
+
+        scraper = get_scraper(platform)
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        results = loop.run_until_complete(
+            scraper.scrape_batch(profiles, progress_callback=None)
+        )
+        
+        loop.close()
+
+        total_scraped = 0
+        valid_emails = 0
+        all_emails = []
+        
+        for result in results:
+            if not result.success:
+                continue
+                
+            total_scraped += 1
+            
+            if result.emails_found:
+                for email_data in result.emails_found:
+                    verification = email_data.get('verification', {})
+                    status = verification.get('overall_status', 'pending')
+                    
+                    try:
+                        status_enum = VerificationStatusEnum[status.upper()]
+                    except:
+                        status_enum = VerificationStatusEnum.PENDING
+                    
+                    email_record = {
+                        'email': email_data['email'],
+                        'platform': PlatformEnum[platform.upper()],
+                        'source_username': email_data.get('source_username'),
+                        'source_profile_url': result.profile_data.get('profile_url') if result.profile_data else None,
+                        'first_name': result.profile_data.get('first_name') if result.profile_data else None,
+                        'last_name': result.profile_data.get('last_name') if result.profile_data else None,
+                        'bio': result.profile_data.get('bio') if result.profile_data else None,
+                        'follower_count': result.profile_data.get('follower_count') if result.profile_data else None,
+                        'verification_status': status.upper(),
+                        'verification': verification,
+                    }
+                    all_emails.append(email_record)
+                    
+                    if status in ['verified', 'risky']:
+                        valid_emails += 1
+
+        GlobalDeduplication.bulk_add(db, all_emails, user_id)
+
+        if campaign:
+            campaign.status = 'completed'
+            campaign.total_scraped = total_scraped
+            campaign.valid_emails = valid_emails
+            from datetime import datetime
+            campaign.completed_at = datetime.utcnow()
+            db.commit()
+
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            user.credits_remaining -= total_scraped
+            db.commit()
+
+        return {
+            'status': 'completed',
+            'total_scraped': total_scraped,
+            'valid_emails': valid_emails,
+            'campaign_id': campaign_id,
+        }
+
+    except Exception as e:
+        logger.error(f"Scrape batch task failed: {str(e)}")
+        
+        campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+        if campaign:
+            campaign.status = 'failed'
+            db.commit()
+        
+        return {
+            'status': 'failed',
+            'error': str(e),
+            'campaign_id': campaign_id,
+        }
+        
+    finally:
+        db.close()
+
 
 
 @celery_app.task(name='verify_emails_batch')

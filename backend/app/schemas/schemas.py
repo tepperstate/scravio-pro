@@ -60,6 +60,12 @@ class ScraperRequest(BaseModel):
     max_results: int = Field(default=50, le=500)
 
 
+class ScraperImportRequest(BaseModel):
+    platform: PlatformEnum
+    usernames: List[str] = Field(..., description="List of usernames extracted from extension CSV")
+    name: Optional[str] = Field(default="Extension Import", description="Name for the campaign")
+
+
 class ScraperResponse(BaseModel):
     campaign_id: int
     status: str

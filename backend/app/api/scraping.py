@@ -12,7 +12,7 @@ from app.core.security import get_current_active_user
 from app.core.config import settings
 from app.models.user import User, Campaign, ScrapedEmail, PlatformEnum, VerificationStatusEnum
 from app.schemas.schemas import (
-    ScraperRequest, ScraperResponse, EmailData, EmailListResponse,
+    ScraperRequest, ScraperImportRequest, ScraperResponse, EmailData, EmailListResponse,
     CampaignStatus, CreditBalance, PlatformEnum as PlatformEnumSchema
 )
 from app.scrapers import get_scraper
@@ -70,6 +70,58 @@ async def start_scraping(
         campaign_id=campaign.id,
         status="queued",
         message=f"Scraping job queued for {request.platform.value}. You will be notified when complete."
+    )
+
+
+@router.post("/import", response_model=ScraperResponse)
+async def import_scraping(
+    request: ScraperImportRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Import a list of usernames from the extension to scrape
+    """
+    if not request.usernames:
+        raise HTTPException(status_code=400, detail="Usernames list cannot be empty")
+        
+    num_profiles = len(request.usernames)
+    
+    # Check credits
+    if current_user.credits_remaining < num_profiles:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Insufficient credits. Need {num_profiles}, have {current_user.credits_remaining}"
+        )
+    
+    # Create campaign
+    campaign = Campaign(
+        user_id=current_user.id,
+        name=request.name or f"{request.platform.value.title()} Import",
+        platform=PlatformEnum[request.platform.value.upper()],
+        search_query=f"Import of {num_profiles} profiles",
+        total_scraped=0,
+        valid_emails=0,
+        status="pending",
+    )
+    db.add(campaign)
+    db.commit()
+    db.refresh(campaign)
+    
+    # Queue background task
+    from app.services.celery_tasks import scrape_platform_batch
+    scrape_platform_batch.delay(
+        user_id=current_user.id,
+        platform=request.platform.value,
+        profiles=request.usernames,
+        campaign_id=campaign.id
+    )
+    
+    return ScraperResponse(
+        campaign_id=campaign.id,
+        status="queued",
+        message=f"Batch scraping job queued for {num_profiles} profiles."
     )
 
 

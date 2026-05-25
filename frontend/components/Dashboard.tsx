@@ -28,7 +28,7 @@ const statusColors: Record<string, string> = {
 }
 
 export default function Dashboard({ onBack }: DashboardProps) {
-  const [activeTab, setActiveTab] = useState<'campaigns' | 'emails' | 'export'>('campaigns')
+  const [activeTab, setActiveTab] = useState<'campaigns' | 'emails' | 'export' | 'import'>('campaigns')
   const [isCreatingCampaign, setIsCreatingCampaign] = useState(false)
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null)
   
@@ -125,6 +125,72 @@ export default function Dashboard({ onBack }: DashboardProps) {
     setSelectedPlatform(null)
     setActiveTab('campaigns')
     fetchData() // Refresh data
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      toast.error('Please upload a valid CSV file.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text = event.target?.result as string;
+        const rows = text.split('\\n');
+        if (rows.length < 2) {
+          toast.error('CSV file is empty or invalid.');
+          return;
+        }
+
+        // Parse usernames from the second column (index 1)
+        const usernames = [];
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i].trim();
+          if (!row) continue;
+          
+          // Basic CSV parsing handling quotes
+          // Split by comma but respect quotes
+          const match = row.match(/(".*?"|[^",\\s]+)(?=\\s*,|\\s*$)/g);
+          if (match && match.length >= 2) {
+            let username = match[1].replace(/^"|"$/g, '').trim();
+            if (username) {
+              usernames.push(username);
+            }
+          }
+        }
+
+        if (usernames.length === 0) {
+          toast.error('Could not find any usernames in the CSV.');
+          return;
+        }
+
+        const platform = file.name.toLowerCase().includes('instagram') ? 'instagram' : 'instagram'; // Defaulting to instagram for extension
+
+        toast.success(`Found ${usernames.length} profiles. Starting import...`);
+        
+        await api.post('/scrape/import', {
+          platform: platform,
+          usernames: usernames,
+          name: `Extension Import - ${new Date().toLocaleDateString()}`
+        });
+
+        toast.success('Import campaign started successfully!');
+        setActiveTab('campaigns');
+        fetchData();
+
+      } catch (error: any) {
+        console.error('Import error:', error);
+        toast.error(error.response?.data?.detail || 'Failed to import CSV.');
+      }
+    };
+    reader.readAsText(file);
+    
+    // Reset file input
+    e.target.value = '';
   }
 
   // Calculate some overview stats
@@ -260,6 +326,7 @@ export default function Dashboard({ onBack }: DashboardProps) {
                 {[
                   { id: 'campaigns', label: 'Campaigns', icon: '🎯' },
                   { id: 'emails', label: 'Emails', icon: '📧' },
+                  { id: 'import', label: 'Import Extension', icon: '📥' },
                   { id: 'export', label: 'Export', icon: '📤' },
                 ].map((tab) => (
                   <button
@@ -436,6 +503,56 @@ export default function Dashboard({ onBack }: DashboardProps) {
                         <p className="text-sm text-slate-500">Download your latest campaign</p>
                       </button>
                     ))}
+                  </div>
+                )}
+
+                {activeTab === 'import' && (
+                  <div className="bg-white rounded-xl border border-slate-200 p-8 text-center max-w-2xl mx-auto">
+                    <div className="w-16 h-16 mx-auto mb-6 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center">
+                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-900 mb-2">Import Extension Data</h3>
+                    <p className="text-slate-500 mb-8">
+                      Upload the CSV file exported from the SocialScravio Chrome Extension. 
+                      We will automatically queue a deep scan to find their verified email addresses and phone numbers.
+                    </p>
+                    
+                    <div className="relative group cursor-pointer">
+                      <input 
+                        type="file" 
+                        accept=".csv" 
+                        onChange={handleFileUpload}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      />
+                      <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 group-hover:border-blue-500 group-hover:bg-blue-50 transition">
+                        <span className="text-blue-600 font-medium flex items-center justify-center gap-2">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                          Select CSV File
+                        </span>
+                        <p className="text-sm text-slate-400 mt-2">or drag and drop here</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-8 pt-8 border-t border-slate-200">
+                      <h4 className="font-semibold text-slate-900 mb-2">Need the extension?</h4>
+                      <p className="text-sm text-slate-500 mb-4">
+                        Download the latest version of the SocialScravio Chrome Extension to start extracting profiles from Instagram.
+                      </p>
+                      <a 
+                        href="/scravio-extension.zip" 
+                        download
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Download Extension v1.1 (.zip)
+                      </a>
+                    </div>
                   </div>
                 )}
               </>

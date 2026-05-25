@@ -45,9 +45,27 @@ class BaseScraper(ABC):
             max_results: Maximum number of profiles to scrape
             progress_callback: Optional callback for progress updates
         Returns:
-            List of ProfileResult objects
         """
         raise NotImplementedError
+
+    async def scrape_batch(self, profiles: List[str], max_results: int = None, 
+                           progress_callback: Optional[Callable] = None) -> List[ProfileResult]:
+        """
+        Scrape an explicit list of profiles
+        """
+        results = []
+        limit = max_results if max_results else len(profiles)
+        
+        for i, profile_id in enumerate(profiles[:limit]):
+            result = await self._scrape_profile(profile_id)
+            results.append(result)
+
+            if progress_callback:
+                progress_callback(i + 1, limit, result)
+
+            await self.rate_limit()
+
+        return results
 
     async def _scrape_profile(self, profile_identifier: str) -> ProfileResult:
         """

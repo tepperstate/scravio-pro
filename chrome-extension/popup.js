@@ -121,7 +121,7 @@ function exportData() {
 
 // Generate CSV content
 function generateCSV(data) {
-  const headers = ['Type', 'Username', 'Full Name', 'Profile URL', 'Is Private', 'Followed By Viewer', 'Export Date'];
+  const headers = ['Type', 'Username', 'Full Name', 'Profile URL', 'Profile Contact Email', 'Profile Email', 'Profile Phone', 'Export Date'];
   const rows = [headers.join(',')];
 
   const addRow = (user, type) => {
@@ -130,9 +130,10 @@ function generateCSV(data) {
       `"${user.username || ''}"`,
       `"${user.fullName || ''}"`,
       `"https://instagram.com/${user.username || ''}"`,
-      user.isPrivate ? 'Yes' : 'No',
-      user.followedByViewer ? 'Yes' : 'No',
-      new Date().toISOString()
+      `""`, // Profile Contact Email (To be scraped by backend)
+      `""`, // Profile Email (To be scraped by backend)
+      `""`, // Profile Phone (To be scraped by backend)
+      `"${new Date().toISOString()}"`
     ];
     rows.push(row.join(','));
   };
@@ -148,7 +149,7 @@ function generateCSV(data) {
 function generateXLSX(data) {
   // For simplicity, we'll generate an HTML table that Excel can open
   let html = '<table>';
-  html += '<tr><th>Type</th><th>Username</th><th>Full Name</th><th>Profile URL</th><th>Is Private</th></tr>';
+  html += '<tr><th>Type</th><th>Username</th><th>Full Name</th><th>Profile URL</th><th>Profile Contact Email</th><th>Profile Email</th><th>Profile Phone</th><th>Export Date</th></tr>';
   
   const addRow = (user, type) => {
     html += `<tr>
@@ -156,7 +157,10 @@ function generateXLSX(data) {
       <td>${user.username || ''}</td>
       <td>${user.fullName || ''}</td>
       <td>https://instagram.com/${user.username || ''}</td>
-      <td>${user.isPrivate ? 'Yes' : 'No'}</td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td>${new Date().toISOString()}</td>
     </tr>`;
   };
   
@@ -175,16 +179,24 @@ function generateJSON(data) {
     totalFollowers: data.followers.length,
     totalFollowing: data.following.length,
     followers: data.followers.map(f => ({
+      type: 'Follower',
       username: f.username,
       fullName: f.fullName,
       profileUrl: `https://instagram.com/${f.username}`,
-      isPrivate: f.isPrivate,
+      profileContactEmail: "",
+      profileEmail: "",
+      profilePhone: "",
+      exportDate: new Date().toISOString()
     })),
     following: data.following.map(f => ({
+      type: 'Following',
       username: f.username,
       fullName: f.fullName,
       profileUrl: `https://instagram.com/${f.username}`,
-      isPrivate: f.isPrivate,
+      profileContactEmail: "",
+      profileEmail: "",
+      profilePhone: "",
+      exportDate: new Date().toISOString()
     }))
   }, null, 2);
 }

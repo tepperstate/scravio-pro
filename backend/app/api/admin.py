@@ -54,20 +54,22 @@ async def list_all_campaigns(
     """List all campaigns in the system (for monitoring)"""
     campaigns = db.query(Campaign).order_by(Campaign.created_at.desc()).offset(skip).limit(limit).all()
     
-    return [
-        CampaignStatus(
-            id=c.id,
-            name=f"{c.name} (User #{c.user_id})",
-            platform=getattr(c.platform, 'value', str(c.platform)),
-            status=c.status,
-            total_scraped=c.total_scraped or 0,
-            valid_emails=c.valid_emails or 0,
-            progress=100.0 if c.status == "completed" else (50.0 if c.status == "running" else 0.0),
-            created_at=c.created_at,
-            completed_at=c.completed_at
+    campaigns_data = []
+    for c in campaigns:
+        campaigns_data.append(
+            CampaignStatus(
+                id=c.id,
+                name=f"{c.name or 'Unnamed'} (User #{c.user_id})",
+                platform=getattr(c.platform, 'value', str(c.platform)) if c.platform else "unknown",
+                status=c.status or "pending",
+                total_scraped=c.total_scraped or 0,
+                valid_emails=c.valid_emails or 0,
+                progress=100.0 if c.status == "completed" else (50.0 if c.status == "running" else 0.0),
+                created_at=c.created_at,
+                completed_at=c.completed_at
+            )
         )
-        for c in campaigns
-    ]
+    return campaigns_data
 
 @router.get("/users", response_model=List[UserResponse])
 async def list_users(

@@ -215,7 +215,7 @@ class EmailVerifier:
             return False, 0.0
 
         # Generate a random test email
-        test_email = f"scravio_test_{random_string(8)}@"
+        test_email = f"SocialScravio_test_{random_string(8)}@"
         domain = ""
 
         for preference, mx_server in mx_records[:1]:
@@ -234,7 +234,7 @@ class EmailVerifier:
                 if not domain:
                     continue
                 
-                test_email = f"scravio_verify_{random_string(10)}@{domain}"
+                test_email = f"SocialScravio_verify_{random_string(10)}@{domain}"
                 
                 # Try to verify this random email
                 server = smtplib.SMTP(timeout=self.smtp_timeout)

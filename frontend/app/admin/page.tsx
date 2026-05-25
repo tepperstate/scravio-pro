@@ -44,7 +44,7 @@ export default function AdminPage() {
       } catch (error: any) {
         if (error.response?.status === 401 || error.response?.status === 403) {
           toast.error("Authentication failed or forbidden.")
-          localStorage.removeItem('scravio_token')
+          localStorage.removeItem('SocialScravio_token')
           window.location.href = '/'
         } else {
           toast.error("An error occurred verifying admin access.")
@@ -153,24 +153,35 @@ export default function AdminPage() {
               <h1 className="text-xl font-bold text-slate-900">Admin Control Center</h1>
             </div>
             
-            <div className="flex bg-slate-100 p-1 rounded-lg">
+            <div className="flex items-center gap-6">
+              <div className="flex bg-slate-100 p-1 rounded-lg">
+                <button 
+                  onClick={() => setActiveTab('overview')}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${activeTab === 'overview' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Overview
+                </button>
+                <button 
+                  onClick={() => setActiveTab('users')}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${activeTab === 'users' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Users
+                </button>
+                <button 
+                  onClick={() => setActiveTab('campaigns')}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${activeTab === 'campaigns' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Campaigns
+                </button>
+              </div>
               <button 
-                onClick={() => setActiveTab('overview')}
-                className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${activeTab === 'overview' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                onClick={() => {
+                  localStorage.removeItem('SocialScravio_token')
+                  window.location.href = '/'
+                }}
+                className="text-sm font-medium text-slate-500 hover:text-slate-900 transition"
               >
-                Overview
-              </button>
-              <button 
-                onClick={() => setActiveTab('users')}
-                className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${activeTab === 'users' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                Users
-              </button>
-              <button 
-                onClick={() => setActiveTab('campaigns')}
-                className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${activeTab === 'campaigns' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                Campaigns
+                Log Out
               </button>
             </div>
           </div>

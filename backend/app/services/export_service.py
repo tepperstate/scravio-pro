@@ -221,4 +221,4 @@ def generate_filename(campaign_name: str, format: str) -> str:
     clean_name = ''.join(c if c.isalnum() or c in ' -_' else '_' for c in campaign_name)
     clean_name = clean_name.strip().replace(' ', '_')[:30]
     
-    return f"scravio_{clean_name}_{timestamp}.{format}"
+    return f"SocialScravio_{clean_name}_{timestamp}.{format}"

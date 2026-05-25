@@ -1,8 +1,8 @@
-# Scravio Email Scraper Clone
+# SocialScravio
 
-A comprehensive, open-source email scraper system for extracting and verifying emails from social media platforms. Built with modern technologies and designed to be scalable, reliable, and free.
+SocialScravio is an advanced Instagram follower extraction and management system. A comprehensive, open-source email scraper system for extracting and verifying emails from social media platforms. Built with modern technologies and designed to be scalable, reliable, and free.
 
-![Scravio Banner](https://via.placeholder.com/1200x400/0ea5e9/ffffff?text=Scravio+Email+Scraper)
+![SocialScravio Banner](https://via.placeholder.com/1200x400/0ea5e9/ffffff?text=SocialScravio+Email+Scraper)
 
 ## 🚀 Features
 
@@ -47,7 +47,7 @@ A comprehensive, open-source email scraper system for extracting and verifying e
 ## 📁 Project Structure
 
 ```
-scravio/
+SocialScravio/
 ├── backend/
 │   ├── app/
 │   │   ├── api/           # API route handlers
@@ -154,7 +154,7 @@ npm run dev
 
 ```env
 # Database
-DATABASE_URL=postgresql://user:pass@host:5432/scravio
+DATABASE_URL=postgresql://user:pass@host:5432/SocialScravio
 
 # Redis
 REDIS_URL=redis://localhost:6379/0
@@ -235,9 +235,9 @@ POST /api/v1/export/download
 - Implement rate limiting to avoid IP blocks
 - Use rotating proxies for large-scale scraping
 
-## 💰 Cost Comparison with Scravio
+## 💰 Cost Comparison with SocialScravio
 
-| Feature | Scravio | Scravio Clone |
+| Feature | SocialScravio | SocialScravio Clone |
 |---------|---------|---------------|
 | Monthly Credits | 100 (free) | 100+ (free tier) |
 | Platform Access | 6 platforms | 6 platforms |

@@ -30,13 +30,21 @@ function checkExistingData() {
       
       // Request data from content script
       chrome.tabs.sendMessage(tab.id, { action: 'getFollowerData' }, (response) => {
-        if (response && response.data) {
+        if (chrome.runtime.lastError) {
+          document.getElementById('btnText').textContent = 'Please refresh the page and try again.';
+          return;
+        }
+
+        if (response && response.success && response.data) {
           followerData = response.data;
           updateStats(response.data);
           document.getElementById('exportBtn').disabled = false;
           document.getElementById('btnText').textContent = `Export ${response.data.followers.length} Followers`;
         } else {
           document.getElementById('btnText').textContent = 'Open Instagram Profile';
+          if (response && response.error) {
+            console.error('Extraction error:', response.error);
+          }
         }
       });
     } else {

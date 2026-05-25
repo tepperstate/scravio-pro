@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Scravio IG Follower Export",
+  "name": "SocialScravio IG Follower Export",
   "version": "1.0.0",
   "description": "Export Instagram followers and following to CSV, Excel, or JSON - FREE with unlimited exports",
   "permissions": [

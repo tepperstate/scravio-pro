@@ -19,7 +19,7 @@ logger = get_task_logger(__name__)
 
 # Initialize Celery
 celery_app = Celery(
-    'scravio',
+    'SocialScravio',
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND
 )

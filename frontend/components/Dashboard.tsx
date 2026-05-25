@@ -68,7 +68,7 @@ export default function Dashboard({ onBack }: DashboardProps) {
       console.error('Error fetching dashboard data:', error)
       if (error.response?.status === 401 || error.response?.status === 403) {
         toast.error('Authentication failed or expired. Please log in again.')
-        localStorage.removeItem('scravio_token')
+        localStorage.removeItem('SocialScravio_token')
         window.location.href = '/'
       } else {
         toast.error('Failed to load dashboard data.')
@@ -151,7 +151,7 @@ export default function Dashboard({ onBack }: DashboardProps) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <span className="text-xl font-bold text-slate-900">Scravio</span>
+                <span className="text-xl font-bold text-slate-900">SocialScravio</span>
               </div>
             </div>
 
@@ -186,7 +186,7 @@ export default function Dashboard({ onBack }: DashboardProps) {
                 </div>
                 <button 
                   onClick={() => {
-                    localStorage.removeItem('scravio_token')
+                    localStorage.removeItem('SocialScravio_token')
                     window.location.href = '/'
                   }}
                   className="text-sm font-medium text-slate-500 hover:text-slate-900 transition"

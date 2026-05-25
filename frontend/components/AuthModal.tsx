@@ -25,7 +25,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onSu
   if (!isOpen) return null
 
   const getApiUrl = () => {
-    let url = process.env.NEXT_PUBLIC_API_URL || 'https://scravio-backend.onrender.com/api/v1';
+    let url = process.env.NEXT_PUBLIC_API_URL || 'https://SocialScravio-backend.onrender.com/api/v1';
     // Fix trailing slashes
     url = url.replace(/\/+$/, '');
     // Ensure it ends with /api/v1 if it's the backend root
@@ -55,7 +55,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onSu
         })
 
         if (response.data.access_token) {
-          localStorage.setItem('scravio_token', response.data.access_token)
+          localStorage.setItem('SocialScravio_token', response.data.access_token)
           toast.success('Successfully logged in!')
           onSuccess()
         }
@@ -113,7 +113,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onSu
             </h2>
             <p className="text-slate-500 text-sm">
               {mode === 'login' 
-                ? 'Sign in to your Scravio account to continue.' 
+                ? 'Sign in to your SocialScravio account to continue.' 
                 : 'Get 100 free verification credits every month.'}
             </p>
           </div>

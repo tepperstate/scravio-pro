@@ -7,8 +7,13 @@
   // Listen for messages from popup
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'getFollowerData') {
-      const data = extractFollowerData();
-      sendResponse({ data });
+      try {
+        const data = extractFollowerData();
+        sendResponse({ success: true, data });
+      } catch (error) {
+        console.error('SocialScravio Error:', error);
+        sendResponse({ success: false, error: error.message });
+      }
     }
     return true;
   });
@@ -228,9 +233,12 @@
         Export with Scravio
       </div>
     `;
-    
     button.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ action: 'openPopup' });
+      try {
+        chrome.runtime.sendMessage({ action: 'openPopup' });
+      } catch (err) {
+        console.log('SocialScravio: Please open the extension from the toolbar.');
+      }
     });
 
     document.body.appendChild(button);

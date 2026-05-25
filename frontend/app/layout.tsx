@@ -3,7 +3,7 @@ import './globals.css'
 import { Toaster } from 'react-hot-toast'
 
 export const metadata: Metadata = {
-  title: 'Scravio - Email Scraper for Social Media',
+  title: 'SocialScravio - Email Scraper for Social Media',
   description: 'Extract and verify emails from Instagram, Twitter, YouTube, LinkedIn, TikTok, and Facebook.',
 }
 

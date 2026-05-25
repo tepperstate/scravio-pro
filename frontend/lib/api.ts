@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const getApiUrl = () => {
-  let url = process.env.NEXT_PUBLIC_API_URL || 'https://scravio-backend.onrender.com/api/v1';
+  let url = process.env.NEXT_PUBLIC_API_URL || 'https://SocialScravio-backend.onrender.com/api/v1';
   // Fix trailing slashes
   url = url.replace(/\/+$/, '');
   // Ensure it ends with /api/v1 if it's the backend root
@@ -21,7 +21,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('scravio_token');
+      const token = localStorage.getItem('SocialScravio_token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }

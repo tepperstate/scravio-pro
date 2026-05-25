@@ -117,14 +117,14 @@ class CreditBalance(BaseModel):
 
 class CampaignStatus(BaseModel):
     id: int
-    name: str
-    platform: str
-    status: str
-    total_scraped: int
-    valid_emails: int
+    name: Optional[str] = "Unnamed Campaign"
+    platform: Optional[str] = "unknown"
+    status: Optional[str] = "pending"
+    total_scraped: int = 0
+    valid_emails: int = 0
     progress: float
     created_at: Optional[datetime] = None
-    completed_at: Optional[datetime]
+    completed_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

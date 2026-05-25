@@ -1,5 +1,5 @@
 """
-Scravio Email Scraper - Main Application
+SocialScravio Email Scraper - Main Application
 """
 
 from fastapi import FastAPI, Request

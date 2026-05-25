@@ -4,14 +4,14 @@ import os
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Scravio Email Scraper"
+    PROJECT_NAME: str = "SocialScravio Email Scraper"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
     
     # Database
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL",
-        "postgresql://postgres:postgres@localhost:5432/scravio"
+        "postgresql://postgres:postgres@localhost:5432/SocialScravio"
     )
     
     # Redis / Celery

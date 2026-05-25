@@ -20,8 +20,8 @@ def seed_db():
     try:
         # 2. Create 2 Admin users with 10 million credits
         admins = [
-            {"email": "admin1@scravio.com", "full_name": "Admin One", "credits": 10000000},
-            {"email": "admin2@scravio.com", "full_name": "Admin Two", "credits": 10000000},
+            {"email": "admin1@SocialScravio.com", "full_name": "Admin One", "credits": 10000000},
+            {"email": "admin2@SocialScravio.com", "full_name": "Admin Two", "credits": 10000000},
         ]
         
         for admin_data in admins:

@@ -38,8 +38,16 @@ function checkExistingData() {
         if (response && response.success && response.data) {
           followerData = response.data;
           updateStats(response.data);
-          document.getElementById('exportBtn').disabled = false;
-          document.getElementById('btnText').textContent = `Export ${response.data.followers.length} Followers`;
+          
+          const totalFound = response.data.followers.length + response.data.following.length;
+          
+          if (totalFound > 0) {
+            document.getElementById('exportBtn').disabled = false;
+            document.getElementById('btnText').textContent = `Export ${totalFound} Users`;
+          } else {
+            document.getElementById('exportBtn').disabled = true;
+            document.getElementById('btnText').textContent = 'Open Followers List First';
+          }
         } else {
           document.getElementById('btnText').textContent = 'Open Instagram Profile';
           if (response && response.error) {
@@ -48,7 +56,7 @@ function checkExistingData() {
         }
       });
     } else {
-      document.getElementById('btnText').textContent = 'Open Instagram Profile';
+      document.getElementById('btnText').textContent = 'Go to an Instagram Profile';
     }
   });
 }
@@ -98,32 +106,39 @@ function exportData() {
 
     // Download file
     downloadFile(content, filename, mimeType);
-    showSuccess(`Exported ${followerData.followers.length} followers successfully!`);
+    
+    const totalFound = followerData.followers.length + followerData.following.length;
+    showSuccess(`Exported ${totalFound} users successfully!`);
   } catch (error) {
     console.error('Export error:', error);
     showError('Failed to export. Please try again.');
   } finally {
+    const totalFound = followerData.followers.length + followerData.following.length;
     btn.disabled = false;
-    btnText.textContent = `Export ${followerData.followers.length} Followers`;
+    btnText.textContent = `Export ${totalFound} Users`;
   }
 }
 
 // Generate CSV content
 function generateCSV(data) {
-  const headers = ['Username', 'Full Name', 'Profile URL', 'Is Private', 'Followed By Viewer', 'Export Date'];
+  const headers = ['Type', 'Username', 'Full Name', 'Profile URL', 'Is Private', 'Followed By Viewer', 'Export Date'];
   const rows = [headers.join(',')];
 
-  data.followers.forEach(follower => {
+  const addRow = (user, type) => {
     const row = [
-      `"${follower.username || ''}"`,
-      `"${follower.fullName || ''}"`,
-      `"https://instagram.com/${follower.username || ''}"`,
-      follower.isPrivate ? 'Yes' : 'No',
-      follower.followedByViewer ? 'Yes' : 'No',
+      `"${type}"`,
+      `"${user.username || ''}"`,
+      `"${user.fullName || ''}"`,
+      `"https://instagram.com/${user.username || ''}"`,
+      user.isPrivate ? 'Yes' : 'No',
+      user.followedByViewer ? 'Yes' : 'No',
       new Date().toISOString()
     ];
     rows.push(row.join(','));
-  });
+  };
+
+  data.followers.forEach(f => addRow(f, 'Follower'));
+  data.following.forEach(f => addRow(f, 'Following'));
 
   return rows.join('\n');
 }
@@ -133,16 +148,20 @@ function generateCSV(data) {
 function generateXLSX(data) {
   // For simplicity, we'll generate an HTML table that Excel can open
   let html = '<table>';
-  html += '<tr><th>Username</th><th>Full Name</th><th>Profile URL</th><th>Is Private</th></tr>';
+  html += '<tr><th>Type</th><th>Username</th><th>Full Name</th><th>Profile URL</th><th>Is Private</th></tr>';
   
-  data.followers.forEach(follower => {
+  const addRow = (user, type) => {
     html += `<tr>
-      <td>${follower.username || ''}</td>
-      <td>${follower.fullName || ''}</td>
-      <td>https://instagram.com/${follower.username || ''}</td>
-      <td>${follower.isPrivate ? 'Yes' : 'No'}</td>
+      <td>${type}</td>
+      <td>${user.username || ''}</td>
+      <td>${user.fullName || ''}</td>
+      <td>https://instagram.com/${user.username || ''}</td>
+      <td>${user.isPrivate ? 'Yes' : 'No'}</td>
     </tr>`;
-  });
+  };
+  
+  data.followers.forEach(f => addRow(f, 'Follower'));
+  data.following.forEach(f => addRow(f, 'Following'));
   
   html += '</table>';
   return html;

@@ -13,6 +13,10 @@ from app.core.database import Base, engine
 from app.api import auth, scraping, exports, admin
 from app.schemas.schemas import HealthCheck
 from app.core.seed import seed_db
+from app.models.user import User
+from fastapi import Depends
+from sqlalchemy.orm import Session
+from app.core.database import get_db
 
 # Configure logging
 logging.basicConfig(
@@ -78,6 +82,18 @@ async def root():
         "health": "/health",
         "status": "operational"
     }
+
+
+# Temporary endpoint to make a user an admin
+@app.get("/make-admin/{email}", tags=["Root"])
+async def make_me_admin(email: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        return {"error": "User not found. Please log in or register first."}
+    
+    user.is_admin = True
+    db.commit()
+    return {"success": True, "message": f"Successfully made {email} an Admin! You can now access the Admin Panel."}
 
 
 # Include routers

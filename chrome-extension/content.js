@@ -4,10 +4,16 @@
 (function() {
   'use strict';
 
+  // Global accumulation stores for virtual scrolling
+  let accumulatedFollowers = new Map();
+  let accumulatedFollowing = new Map();
+
   // Listen for messages from popup
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'getFollowerData') {
       try {
+        // Run one last extraction before sending
+        mergeModalFollowers();
         const data = extractFollowerData();
         sendResponse({ success: true, data });
       } catch (error) {
@@ -89,16 +95,18 @@
       }
     });
 
-    // If we're on the followers/following modal, extract the list
-    const modalFollowers = extractModalFollowers();
-    if (modalFollowers.followers.length > 0) {
-      data.followers = modalFollowers.followers;
-    }
-    if (modalFollowers.following.length > 0) {
-      data.following = modalFollowers.following;
-    }
+    // Add accumulated users
+    data.followers = Array.from(accumulatedFollowers.values());
+    data.following = Array.from(accumulatedFollowing.values());
 
     return data;
+  }
+
+  // Merge visible followers into global maps
+  function mergeModalFollowers() {
+    const modalFollowers = extractModalFollowers();
+    modalFollowers.followers.forEach(f => accumulatedFollowers.set(f.username, f));
+    modalFollowers.following.forEach(f => accumulatedFollowing.set(f.username, f));
   }
 
   // Extract followers from Instagram modal
@@ -257,8 +265,19 @@
     const url = location.href;
     if (url !== lastUrl) {
       lastUrl = url;
+      // Reset accumulated users on page navigation
+      accumulatedFollowers.clear();
+      accumulatedFollowing.clear();
       setTimeout(addExportButton, 1000);
     }
   }).observe(document.body, { childList: true, subtree: true });
+
+  // Periodically scrape the modal to accumulate users as they scroll
+  setInterval(() => {
+    const modal = document.querySelector('div[role="dialog"]');
+    if (modal) {
+      mergeModalFollowers();
+    }
+  }, 500);
 
 })();

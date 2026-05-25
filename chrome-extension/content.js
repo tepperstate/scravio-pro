@@ -89,10 +89,12 @@
       try {
         const url = `https://www.instagram.com/api/v1/friendships/${userId}/followers/?count=50&search_surface=follow_list_page${maxId ? '&max_id=' + maxId : ''}`;
         const response = await fetch(url, {
+          credentials: 'include',
           headers: {
             'x-ig-app-id': '936619743392459',
             'x-csrftoken': csrf,
-            'x-asbd-id': '129477'
+            'x-asbd-id': '129477',
+            'x-requested-with': 'XMLHttpRequest'
           }
         });
 
@@ -351,11 +353,58 @@
         Export with Scravio
       </div>
     `;
-    button.addEventListener('click', () => {
+    button.addEventListener('click', async () => {
+      const originalText = button.innerHTML;
+      button.innerHTML = 'Fetching & Exporting... Please wait.';
+      button.style.pointerEvents = 'none';
+
       try {
-        chrome.runtime.sendMessage({ action: 'openPopup' });
+        let userId = getUserId();
+        const username = window.location.pathname.replace(/\\//g, '');
+        if (!userId && username) {
+          const res = await fetch(`https://www.instagram.com/web/search/topsearch/?context=blended&query=${username}`);
+          const data = await res.json();
+          const user = data.users.find(u => u.user.username === username);
+          if (user) userId = user.user.pk;
+        }
+
+        if (!userId) {
+          alert('Could not find User ID. Please refresh the page.');
+          return;
+        }
+
+        const followers = await fetchFollowersApi(userId, 5000);
+        
+        // Generate CSV
+        const headers = ['Type', 'Username', 'Full Name', 'Profile URL', 'Profile Contact Email', 'Profile Email', 'Profile Phone', 'Export Date'];
+        const rows = [headers.join(',')];
+        const timestamp = new Date().toISOString();
+
+        followers.forEach(f => {
+          rows.push(`"Follower","${f.username || ''}","${f.fullName || ''}","https://instagram.com/${f.username || ''}","","","","${timestamp}"`);
+        });
+
+        const csvContent = rows.join('\\n');
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const objUrl = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = objUrl;
+        a.download = `scravio_${username}_followers_${timestamp.split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(objUrl);
+        }, 100);
+
       } catch (err) {
-        console.log('SocialScravio: Please open the extension from the toolbar.');
+        console.error('Export error:', err);
+        alert('Failed to export followers: ' + err.message);
+      } finally {
+        button.innerHTML = originalText;
+        button.style.pointerEvents = 'auto';
       }
     });
 

@@ -275,6 +275,16 @@
         </svg>
         <span id="btnText">Select a Profile First</span>
       </button>
+
+      <div style="margin-top: 12px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+        <button class="export-btn" id="apiFetchBtn" style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); margin-bottom: 8px;">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          <span id="apiBtnText">Auto-Fetch All (Bypass Limits)</span>
+        </button>
+        <div id="apiProgress" style="font-size: 11px; color: #64748b; text-align: center; display: none;">Fetching users...</div>
+      </div>
       
       <div class="success" id="successMsg">
         ✓ Export complete! Check your downloads.

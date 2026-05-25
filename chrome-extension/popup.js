@@ -17,6 +17,22 @@ document.addEventListener('DOMContentLoaded', () => {
   // Export button
   document.getElementById('exportBtn').addEventListener('click', exportData);
 
+  // Auto-Fetch API button
+  const apiFetchBtn = document.getElementById('apiFetchBtn');
+  if (apiFetchBtn) {
+    apiFetchBtn.addEventListener('click', fetchViaApi);
+  }
+
+  // Listen for progress
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.action === 'fetchProgress') {
+      const progressEl = document.getElementById('apiProgress');
+      if (progressEl) {
+        progressEl.textContent = `Fetching users... ${msg.count} found`;
+      }
+    }
+  });
+
   // Check for existing data
   checkExistingData();
 });
@@ -61,6 +77,54 @@ function checkExistingData() {
   });
 }
 
+// Fetch via Instagram API
+function fetchViaApi() {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const tab = tabs[0];
+    if (tab && tab.url && tab.url.includes('instagram.com')) {
+      const btn = document.getElementById('apiFetchBtn');
+      const btnText = document.getElementById('apiBtnText');
+      const progress = document.getElementById('apiProgress');
+      
+      btn.disabled = true;
+      btnText.innerHTML = '<span class="loading"></span> Fetching API...';
+      progress.style.display = 'block';
+      progress.textContent = 'Fetching users...';
+      hideMessages();
+
+      chrome.tabs.sendMessage(tab.id, { action: 'fetchFollowersApi', limit: 5000 }, (response) => {
+        btn.disabled = false;
+        btnText.innerHTML = 'Auto-Fetch All (Bypass Limits)';
+        progress.style.display = 'none';
+
+        if (chrome.runtime.lastError) {
+          showError('Please refresh the Instagram page and try again.');
+          return;
+        }
+
+        if (response && response.success && response.data) {
+          followerData = response.data;
+          updateStats(response.data);
+          
+          const totalFound = response.data.followers.length + response.data.following.length;
+          
+          if (totalFound > 0) {
+            document.getElementById('exportBtn').disabled = false;
+            document.getElementById('btnText').textContent = `Export ${totalFound} Users`;
+            showSuccess(`Successfully fetched ${totalFound} users!`);
+          } else {
+            showError('No users found. Make sure you are logged in.');
+          }
+        } else {
+          showError(response?.error || 'Failed to fetch followers.');
+        }
+      });
+    } else {
+      showError('Please navigate to an Instagram profile first.');
+    }
+  });
+}
+
 // Update stats display
 function updateStats(data) {
   document.getElementById('followerCount').textContent = data.followers.length.toLocaleString();
@@ -68,7 +132,7 @@ function updateStats(data) {
 }
 
 // Export data based on selected format
-function exportData() {
+async function exportData() {
   if (!followerData) {
     showError('No data available. Please visit an Instagram profile.');
     return;
@@ -82,23 +146,60 @@ function exportData() {
   hideMessages();
 
   try {
+    // Deduplication logic
+    const storageResult = await chrome.storage.local.get(['exportedUsers']);
+    const exportedUsers = new Set(storageResult.exportedUsers || []);
+    
+    let newFollowers = [];
+    let newFollowing = [];
+    
+    followerData.followers.forEach(f => {
+      if (!exportedUsers.has(f.username)) {
+        newFollowers.push(f);
+        exportedUsers.add(f.username);
+      }
+    });
+    
+    followerData.following.forEach(f => {
+      if (!exportedUsers.has(f.username)) {
+        newFollowing.push(f);
+        exportedUsers.add(f.username);
+      }
+    });
+    
+    const filteredData = {
+      ...followerData,
+      followers: newFollowers,
+      following: newFollowing
+    };
+    
+    if (newFollowers.length === 0 && newFollowing.length === 0) {
+      showError('All found users were already exported previously!');
+      btn.disabled = false;
+      btnText.textContent = `Export ${followerData.followers.length + followerData.following.length} Users`;
+      return;
+    }
+
+    // Save updated exportedUsers to storage
+    await chrome.storage.local.set({ exportedUsers: Array.from(exportedUsers) });
+
     let content, filename, mimeType;
-    const profileName = followerData.username || 'instagram';
+    const profileName = filteredData.username || 'instagram';
     const timestamp = new Date().toISOString().split('T')[0];
 
     switch (selectedFormat) {
       case 'csv':
-        content = generateCSV(followerData);
+        content = generateCSV(filteredData);
         filename = `scravio_${profileName}_followers_${timestamp}.csv`;
         mimeType = 'text/csv';
         break;
       case 'xlsx':
-        content = generateXLSX(followerData);
+        content = generateXLSX(filteredData);
         filename = `scravio_${profileName}_followers_${timestamp}.xlsx`;
         mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
         break;
       case 'json':
-        content = generateJSON(followerData);
+        content = generateJSON(filteredData);
         filename = `scravio_${profileName}_followers_${timestamp}.json`;
         mimeType = 'application/json';
         break;
@@ -107,15 +208,20 @@ function exportData() {
     // Download file
     downloadFile(content, filename, mimeType);
     
-    const totalFound = followerData.followers.length + followerData.following.length;
-    showSuccess(`Exported ${totalFound} users successfully!`);
+    const totalFound = filteredData.followers.length + filteredData.following.length;
+    showSuccess(`Exported ${totalFound} new users successfully!`);
+    
+    followerData = filteredData;
+    updateStats(followerData);
   } catch (error) {
     console.error('Export error:', error);
     showError('Failed to export. Please try again.');
   } finally {
-    const totalFound = followerData.followers.length + followerData.following.length;
-    btn.disabled = false;
-    btnText.textContent = `Export ${totalFound} Users`;
+    if (followerData) {
+      const totalFound = followerData.followers.length + followerData.following.length;
+      btn.disabled = false;
+      btnText.textContent = `Export ${totalFound} Users`;
+    }
   }
 }
 

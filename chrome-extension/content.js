@@ -20,9 +20,104 @@
         console.error('SocialScravio Error:', error);
         sendResponse({ success: false, error: error.message });
       }
+    } else if (message.action === 'fetchFollowersApi') {
+      const userId = getUserId();
+      if (!userId) {
+        sendResponse({ success: false, error: 'Could not find User ID. Please refresh the page.' });
+        return true;
+      }
+      
+      fetchFollowersApi(userId, message.limit || 1000).then(followers => {
+        const pageData = extractFollowerData();
+        // Merge fetched followers
+        pageData.followers = followers;
+        sendResponse({ success: true, data: pageData });
+      }).catch(err => {
+        sendResponse({ success: false, error: err.message });
+      });
+      return true; // Keep channel open for async response
     }
     return true;
   });
+
+  // Extract user ID from page
+  function getUserId() {
+    const scripts = document.querySelectorAll('script');
+    for (let script of scripts) {
+      if (script.textContent.includes('profilePage_') || script.textContent.includes('"user_id":"')) {
+        const match = script.textContent.match(/"profile_id":"(\d+)"/);
+        if (match) return match[1];
+        const match2 = script.textContent.match(/"user_id":"(\d+)"/);
+        if (match2) return match2[1];
+      }
+    }
+    const meta = document.querySelector('meta[property="al:ios:url"]');
+    if (meta && meta.content) {
+      const match = meta.content.match(/user\?id=(\d+)/);
+      if (match) return match[1];
+    }
+    return null;
+  }
+
+  function getCsrfToken() {
+    const match = document.cookie.match(/csrftoken=([^;]+)/);
+    return match ? match[1] : '';
+  }
+
+  async function fetchFollowersApi(userId, limit = 1000) {
+    let followers = [];
+    let maxId = '';
+    let hasNext = true;
+    const csrf = getCsrfToken();
+
+    while (hasNext && followers.length < limit) {
+      try {
+        const url = `https://www.instagram.com/api/v1/friendships/${userId}/followers/?count=50&search_surface=follow_list_page${maxId ? '&max_id=' + maxId : ''}`;
+        const response = await fetch(url, {
+          headers: {
+            'x-ig-app-id': '936619743392459',
+            'x-csrftoken': csrf,
+            'x-asbd-id': '129477'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Rate limit or authentication error');
+        }
+
+        const data = await response.json();
+        const users = data.users || [];
+        
+        users.forEach(u => {
+          followers.push({
+            username: u.username,
+            fullName: u.full_name,
+            isPrivate: u.is_private,
+            followedByViewer: false
+          });
+        });
+
+        // Notify popup of progress
+        try {
+          chrome.runtime.sendMessage({ action: 'fetchProgress', count: followers.length });
+        } catch(e) {}
+
+        if (data.next_max_id) {
+          maxId = data.next_max_id;
+          // Random delay 1-2.5s to prevent being blocked
+          await new Promise(r => setTimeout(r, 1000 + Math.random() * 1500));
+        } else {
+          hasNext = false;
+        }
+      } catch (err) {
+        console.error('API Fetch error:', err);
+        break; 
+      }
+    }
+    
+    // De-duplicate in case Instagram returns duplicates
+    return removeDuplicates(followers);
+  }
 
   // Extract follower data from current page
   function extractFollowerData() {

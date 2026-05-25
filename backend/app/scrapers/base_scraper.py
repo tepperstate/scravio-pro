@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 from app.services.email_extractor import EmailExtractor, extract_profile_data
 from app.services.email_verifier import verifier
+from app.services.proxy_manager import proxy_manager
 from app.core.config import settings
 
 
@@ -151,15 +152,9 @@ class BaseScraper(ABC):
         """Apply rate limiting between requests"""
         await asyncio.sleep(self.rate_limit_delay)
 
-    def get_next_proxy(self) -> Optional[str]:
-        """Get next proxy from the pool (round-robin)"""
-        if not self.proxy_list:
-            return None
-        proxy = self.proxy_list[self._proxy_index % len(self.proxy_list)]
-        self._proxy_index = (self._proxy_index + 1) % len(self.proxy_list)
-        return proxy
-
-    _proxy_index = 0
+    def get_next_proxy(self) -> Optional[dict]:
+        """Get next proxy from the pool (randomized)"""
+        return proxy_manager.get_proxy()
 
 
 class ProfileSearchResult:

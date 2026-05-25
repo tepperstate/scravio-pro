@@ -172,11 +172,14 @@ class InstagramAPIScraper:
     async def get_profile_public(username: str) -> Optional[dict]:
         """Get public profile info via web scraping"""
         import requests
+        from app.services.proxy_manager import proxy_manager
         
         try:
+            proxy = proxy_manager.get_proxy()
             response = requests.get(
                 f"https://instagram.com/{username}/",
-                headers={'User-Agent': 'Mozilla/5.0'},
+                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'},
+                proxies=proxy,
                 timeout=10
             )
             

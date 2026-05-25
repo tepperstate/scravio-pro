@@ -65,6 +65,7 @@ class FacebookScraper(BaseScraper):
     async def _fetch_page_web(self, identifier: str) -> Optional[dict]:
         """Fetch Facebook page via web scraping"""
         import requests
+        from app.services.proxy_manager import proxy_manager
         
         try:
             # Handle both page names and IDs
@@ -73,12 +74,14 @@ class FacebookScraper(BaseScraper):
             else:
                 url = f"https://www.facebook.com/{identifier.lstrip('/')}"
             
+            proxy = proxy_manager.get_proxy()
             response = requests.get(
                 url,
                 headers={
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                     'Accept': 'text/html,application/xhtml+xml',
                 },
+                proxies=proxy,
                 timeout=10
             )
 

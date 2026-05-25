@@ -70,15 +70,18 @@ class TikTokScraper(BaseScraper):
     async def _fetch_profile_web(self, username: str) -> Optional[dict]:
         """Fetch TikTok profile via web scraping"""
         import requests
+        from app.services.proxy_manager import proxy_manager
         
         try:
             url = f"https://www.tiktok.com/@{username.lstrip('@')}"
+            proxy = proxy_manager.get_proxy()
             response = requests.get(
                 url,
                 headers={
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                     'Accept': 'text/html,application/xhtml+xml,application/json',
                 },
+                proxies=proxy,
                 timeout=10
             )
 

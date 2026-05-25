@@ -8,7 +8,7 @@ import io
 import json
 from typing import List, Dict, Optional
 from datetime import datetime
-import pandas as pd
+from datetime import datetime
 
 from app.models.user import ScrapedEmail
 
@@ -113,20 +113,42 @@ class ExportService:
             }
             data.append(row)
         
-        df = pd.DataFrame(data)
-        
-        # Create Excel file in memory
+        from openpyxl import Workbook
+        from openpyxl.utils import get_column_letter
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Emails"
+
+        if not data:
+            # Handle empty data case gracefully
+            output = io.BytesIO()
+            wb.save(output)
+            return output.getvalue()
+
+        # Write headers
+        headers = list(data[0].keys())
+        ws.append(headers)
+
+        # Write rows
+        for row in data:
+            ws.append([row.get(h, '') for h in headers])
+
+        # Auto-adjust column widths
+        for col_idx, col_cells in enumerate(ws.columns, 1):
+            max_length = 0
+            col_letter = get_column_letter(col_idx)
+            for cell in col_cells:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[col_letter].width = adjusted_width
+
         output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, sheet_name='Emails', index=False)
-            
-            # Auto-adjust column widths
-            worksheet = writer.sheets['Emails']
-            for i, col in enumerate(df.columns):
-                max_length = max(df[col].astype(str).map(len).max(), len(col)) + 2
-                worksheet.column_dimensions[chr(65 + i) if i < 26 else 'A' + chr(65 + i - 26)].width = min(max_length, 50)
-        
-        return output.getvalue()
+        wb.save(output)
 
     def export_to_json(self, emails: List[ScrapedEmail],
                        include_unverified: bool = False) -> str:

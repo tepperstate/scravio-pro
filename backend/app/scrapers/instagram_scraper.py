@@ -72,23 +72,9 @@ class InstagramScraper(BaseScraper):
         try:
             username = profile_identifier.lstrip('@')
             
-            # Get profile
-            profile = instaloader.Profile.from_username(self.loader.context, username)
+            # Using the public API scraper instead of instaloader to prevent hanging on rate limits
+            return await InstagramAPIScraper.get_profile_public(username)
             
-            return {
-                'username': profile.username,
-                'full_name': profile.full_name,
-                'biography': profile.biography,
-                'followers': profile.followers,
-                'following': profile.followees,
-                'posts_count': profile.mediacount,
-                'external_url': profile.external_url,
-                'is_private': profile.is_private,
-                'is_verified': profile.is_verified,
-                'profile_pic_url': profile.profile_pic_url,
-                'instagram_url': f"https://instagram.com/{profile.username}",
-                'igtv_count': profile.igtvcount if hasattr(profile, 'igtvcount') else 0,
-            }
         except Exception as e:
             print(f"Error fetching Instagram profile {profile_identifier}: {e}")
             return None

@@ -415,10 +415,10 @@
     
     try {
       let userId = getUserId();
-      const username = window.location.pathname.replace(/\\//g, '');
+      const username = window.location.pathname.replace(/\//g, '');
       if (!userId && username) {
         document.getElementById('scravio-status').innerText = 'Resolving username...';
-        const res = await fetch(\`https://www.instagram.com/web/search/topsearch/?context=blended&query=\${username}\`);
+        const res = await fetch(`https://www.instagram.com/web/search/topsearch/?context=blended&query=${username}`);
         const data = await res.json();
         const user = data.users.find(u => u.user.username === username);
         if (user) userId = user.user.pk;
@@ -435,9 +435,9 @@
       const csrf = getCsrfToken();
 
       while (hasNext && !shouldStopFetching) {
-        document.getElementById('scravio-status').innerText = \`Fetching followers... (\${fetchedFollowersList.length})\`;
+        document.getElementById('scravio-status').innerText = `Fetching followers... (${fetchedFollowersList.length})`;
         
-        const url = \`https://www.instagram.com/api/v1/friendships/\${userId}/followers/?count=50&search_surface=follow_list_page\${maxId ? '&max_id=' + maxId : ''}\`;
+        const url = `https://www.instagram.com/api/v1/friendships/${userId}/followers/?count=50&search_surface=follow_list_page${maxId ? '&max_id=' + maxId : ''}`;
         const response = await fetch(url, {
           credentials: 'include',
           headers: {
@@ -470,7 +470,7 @@
         }
       }
 
-      document.getElementById('scravio-status').innerText = \`Finished. Total: \${fetchedFollowersList.length}\`;
+      document.getElementById('scravio-status').innerText = `Finished. Total: ${fetchedFollowersList.length}`;
     } catch (err) {
       document.getElementById('scravio-status').innerText = 'Error: ' + err.message;
       console.error(err);
@@ -482,22 +482,22 @@
 
   function exportCSV() {
     if (fetchedFollowersList.length === 0) return;
-    const username = window.location.pathname.replace(/\\//g, '');
+    const username = window.location.pathname.replace(/\//g, '');
     const headers = ['Type', 'Username', 'Full Name', 'Profile URL', 'Export Date'];
     const rows = [headers.join(',')];
     const timestamp = new Date().toISOString();
 
     fetchedFollowersList.forEach(f => {
-      rows.push(\`"Follower","\${f.username || ''}","\${f.fullName || ''}","https://instagram.com/\${f.username || ''}","\${timestamp}"\`);
+      rows.push(`"Follower","${f.username || ''}","${f.fullName || ''}","https://instagram.com/${f.username || ''}","${timestamp}"`);
     });
 
-    const csvContent = rows.join('\\n');
+    const csvContent = rows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const objUrl = URL.createObjectURL(blob);
     
     const a = document.createElement('a');
     a.href = objUrl;
-    a.download = \`scravio_\${username}_followers_\${timestamp.split('T')[0]}.csv\`;
+    a.download = `scravio_${username}_followers_${timestamp.split('T')[0]}.csv`;
     document.body.appendChild(a);
     a.click();
     
@@ -521,17 +521,17 @@
 
       try {
         const platform = "instagram";
-        const username = window.location.pathname.replace(/\\//g, '');
+        const username = window.location.pathname.replace(/\//g, '');
         const res = await fetch('https://scravio-pro.onrender.com/api/scrape/import', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': \`Bearer \${response.token}\`
+            'Authorization': `Bearer ${response.token}`
           },
           body: JSON.stringify({
             platform: platform,
             usernames: fetchedFollowersList.map(u => u.username),
-            name: \`\${platform.charAt(0).toUpperCase() + platform.slice(1)} Import - \${username}\`
+            name: `${platform.charAt(0).toUpperCase() + platform.slice(1)} Import - ${username}`
           })
         });
 

@@ -69,6 +69,7 @@ export default function Dashboard({ onBack }: DashboardProps) {
       if (error.response?.status === 401 || error.response?.status === 403) {
         toast.error('Authentication failed or expired. Please log in again.')
         localStorage.removeItem('SocialScravio_token')
+        localStorage.removeItem('Scravio_token')
         window.location.href = '/'
       } else {
         toast.error('Failed to load dashboard data.')
@@ -187,6 +188,7 @@ export default function Dashboard({ onBack }: DashboardProps) {
                 <button 
                   onClick={() => {
                     localStorage.removeItem('SocialScravio_token')
+                    localStorage.removeItem('Scravio_token')
                     window.location.href = '/'
                   }}
                   className="text-sm font-medium text-slate-500 hover:text-slate-900 transition"

@@ -66,6 +66,7 @@ export default function Home() {
                   <button 
                     onClick={() => {
                       localStorage.removeItem('SocialScravio_token')
+                      localStorage.removeItem('Scravio_token')
                       window.location.reload()
                     }}
                     className="px-4 py-2.5 text-sm font-medium text-slate-400 hover:text-white transition"

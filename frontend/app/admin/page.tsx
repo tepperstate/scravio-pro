@@ -15,6 +15,7 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isVerifying, setIsVerifying] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [fetchError, setFetchError] = useState(false)
   
   // Modals state
   const [showAddCredits, setShowAddCredits] = useState(false)
@@ -57,6 +58,7 @@ export default function AdminPage() {
 
   const fetchAllData = async () => {
     setIsLoading(true)
+    setFetchError(false)
     try {
       const [statsRes, usersRes, campaignsRes] = await Promise.all([
         api.get('/admin/stats'),
@@ -67,7 +69,9 @@ export default function AdminPage() {
       setUsers(usersRes.data)
       setCampaigns(campaignsRes.data)
     } catch (error) {
+      console.error('Admin API error:', error)
       toast.error('Failed to fetch admin data')
+      setFetchError(true)
     } finally {
       setIsLoading(false)
     }
@@ -177,6 +181,7 @@ export default function AdminPage() {
               <button 
                 onClick={() => {
                   localStorage.removeItem('SocialScravio_token')
+                  localStorage.removeItem('Scravio_token')
                   window.location.href = '/'
                 }}
                 className="text-sm font-medium text-slate-500 hover:text-slate-900 transition"
@@ -192,6 +197,18 @@ export default function AdminPage() {
         {isLoading && !stats ? (
           <div className="flex justify-center items-center py-32">
             <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div>
+          </div>
+        ) : fetchError ? (
+          <div className="flex flex-col items-center justify-center py-32 bg-white rounded-xl border border-slate-200 shadow-sm">
+            <div className="text-4xl mb-4">⚠️</div>
+            <h3 className="text-lg font-bold text-slate-900">Failed to load admin data</h3>
+            <p className="text-slate-500 mb-6 text-center max-w-md">There was an issue communicating with the server. Please check the backend connection or try again.</p>
+            <button 
+              onClick={fetchAllData}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
+            >
+              Retry Connection
+            </button>
           </div>
         ) : (
           <>

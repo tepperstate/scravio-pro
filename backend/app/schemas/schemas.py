@@ -147,6 +147,12 @@ class AdminStats(BaseModel):
 class CampaignUpdateRequest(BaseModel):
     name: Optional[str] = None
 
+class CampaignBatchDeleteRequest(BaseModel):
+    campaign_ids: List[int]
+
+class EmailBatchDeleteRequest(BaseModel):
+    email_ids: List[int]
+
 
 class UserUpdateRequest(BaseModel):
     is_admin: Optional[bool] = None

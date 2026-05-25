@@ -13,7 +13,8 @@ from app.core.config import settings
 from app.models.user import User, Campaign, ScrapedEmail, PlatformEnum, VerificationStatusEnum
 from app.schemas.schemas import (
     ScraperRequest, ScraperImportRequest, ScraperResponse, EmailData, EmailListResponse,
-    CampaignStatus, CreditBalance, PlatformEnum as PlatformEnumSchema, CampaignUpdateRequest
+    CampaignStatus, CreditBalance, PlatformEnum as PlatformEnumSchema, CampaignUpdateRequest,
+    CampaignBatchDeleteRequest, EmailBatchDeleteRequest
 )
 from app.scrapers import get_scraper
 from app.services.dedup_engine import GlobalDeduplication, DeduplicationEngine
@@ -246,6 +247,46 @@ async def delete_campaign(
     db.commit()
     
     return {"status": "success", "message": "Campaign deleted"}
+
+
+@router.post("/campaigns/batch-delete")
+async def delete_campaigns_batch(
+    request: CampaignBatchDeleteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Delete multiple campaigns"""
+    campaigns = db.query(Campaign).filter(
+        Campaign.id.in_(request.campaign_ids),
+        Campaign.user_id == current_user.id
+    ).all()
+    
+    deleted_count = len(campaigns)
+    for campaign in campaigns:
+        db.delete(campaign)
+        
+    db.commit()
+    return {"status": "success", "deleted_count": deleted_count}
+
+
+@router.post("/emails/batch-delete")
+async def delete_emails_batch(
+    request: EmailBatchDeleteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Delete multiple emails"""
+    emails = db.query(ScrapedEmail).filter(
+        ScrapedEmail.id.in_(request.email_ids),
+        ScrapedEmail.user_id == current_user.id
+    ).all()
+    
+    deleted_count = len(emails)
+    for email in emails:
+        db.delete(email)
+        
+    db.commit()
+    return {"status": "success", "deleted_count": deleted_count}
 
 
 @router.get("/campaigns", response_model=List[CampaignStatus])

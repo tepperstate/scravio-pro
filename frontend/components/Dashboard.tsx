@@ -41,6 +41,37 @@ export default function Dashboard({ onBack }: DashboardProps) {
   const [emails, setEmails] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
+  const [selectedCampaigns, setSelectedCampaigns] = useState<number[]>([])
+  const [selectedEmails, setSelectedEmails] = useState<number[]>([])
+
+  const handleBatchDeleteCampaigns = async () => {
+    if (selectedCampaigns.length === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedCampaigns.length} campaigns?`)) return;
+    
+    try {
+      await api.post('/scrape/campaigns/batch-delete', { campaign_ids: selectedCampaigns })
+      toast.success('Campaigns deleted successfully!')
+      setSelectedCampaigns([])
+      fetchData()
+    } catch (error) {
+      toast.error('Failed to delete campaigns')
+    }
+  }
+
+  const handleBatchDeleteEmails = async () => {
+    if (selectedEmails.length === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedEmails.length} emails?`)) return;
+    
+    try {
+      await api.post('/scrape/emails/batch-delete', { email_ids: selectedEmails })
+      toast.success('Emails deleted successfully!')
+      setSelectedEmails([])
+      fetchData()
+    } catch (error) {
+      toast.error('Failed to delete emails')
+    }
+  }
+
   const fetchData = async () => {
     try {
       setIsLoading(true)
@@ -389,6 +420,18 @@ export default function Dashboard({ onBack }: DashboardProps) {
                 {/* Content */}
                 {activeTab === 'campaigns' && (
                   <div className="space-y-4">
+                    {selectedCampaigns.length > 0 && (
+                      <div className="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100">
+                        <span className="text-blue-800 font-medium">{selectedCampaigns.length} campaigns selected</span>
+                        <button 
+                          onClick={handleBatchDeleteCampaigns}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                          Delete Selected
+                        </button>
+                      </div>
+                    )}
                     {campaigns.length === 0 ? (
                       <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
                         <div className="text-4xl mb-4">🎯</div>
@@ -406,6 +449,15 @@ export default function Dashboard({ onBack }: DashboardProps) {
                         <div key={campaign.id} className="bg-white rounded-xl border border-slate-200 p-6">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
+                              <input 
+                                type="checkbox" 
+                                className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                checked={selectedCampaigns.includes(campaign.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) setSelectedCampaigns([...selectedCampaigns, campaign.id])
+                                  else setSelectedCampaigns(selectedCampaigns.filter(id => id !== campaign.id))
+                                }}
+                              />
                               <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">
                                 {platformIcons[campaign.platform.toLowerCase()] || '🌐'}
                               </div>
@@ -469,7 +521,20 @@ export default function Dashboard({ onBack }: DashboardProps) {
                 )}
 
                 {activeTab === 'emails' && (
-                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="space-y-4">
+                    {selectedEmails.length > 0 && (
+                      <div className="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100 mb-4">
+                        <span className="text-blue-800 font-medium">{selectedEmails.length} emails selected</span>
+                        <button 
+                          onClick={handleBatchDeleteEmails}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                          Delete Selected
+                        </button>
+                      </div>
+                    )}
+                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                     {emails.length === 0 ? (
                        <div className="text-center py-12">
                          <p className="text-slate-500">No emails found. Run a campaign first.</p>
@@ -478,6 +543,17 @@ export default function Dashboard({ onBack }: DashboardProps) {
                       <table className="w-full">
                         <thead className="bg-slate-50 border-b border-slate-200">
                           <tr>
+                            <th className="px-6 py-4 text-left">
+                              <input 
+                                type="checkbox" 
+                                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                checked={emails.length > 0 && selectedEmails.length === emails.length}
+                                onChange={(e) => {
+                                  if (e.target.checked) setSelectedEmails(emails.map(em => em.id))
+                                  else setSelectedEmails([])
+                                }}
+                              />
+                            </th>
                             <th className="px-6 py-4 text-left text-xs font-medium text-slate-500 uppercase">Email</th>
                             <th className="px-6 py-4 text-left text-xs font-medium text-slate-500 uppercase">Platform</th>
                             <th className="px-6 py-4 text-left text-xs font-medium text-slate-500 uppercase">Source</th>
@@ -489,6 +565,17 @@ export default function Dashboard({ onBack }: DashboardProps) {
                         <tbody className="divide-y divide-slate-200">
                           {emails.map((email) => (
                             <tr key={email.id} className="hover:bg-slate-50">
+                              <td className="px-6 py-4">
+                                <input 
+                                  type="checkbox" 
+                                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                  checked={selectedEmails.includes(email.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) setSelectedEmails([...selectedEmails, email.id])
+                                    else setSelectedEmails(selectedEmails.filter(id => id !== email.id))
+                                  }}
+                                />
+                              </td>
                               <td className="px-6 py-4 font-mono text-sm">{email.email}</td>
                               <td className="px-6 py-4">
                                 <span className="flex items-center gap-2">
@@ -525,6 +612,7 @@ export default function Dashboard({ onBack }: DashboardProps) {
                         </tbody>
                       </table>
                     )}
+                    </div>
                   </div>
                 )}
 

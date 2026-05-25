@@ -459,7 +459,7 @@ export default function Dashboard({ onBack }: DashboardProps) {
                                 }}
                               />
                               <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">
-                                {platformIcons[campaign.platform.toLowerCase()] || '🌐'}
+                                {platformIcons[campaign.platform?.toLowerCase()] || '🌐'}
                               </div>
                               <div>
                                 <h3 className="font-semibold text-slate-900">{campaign.name}</h3>

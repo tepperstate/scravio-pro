@@ -21,20 +21,35 @@
         sendResponse({ success: false, error: error.message });
       }
     } else if (message.action === 'fetchFollowersApi') {
-      const userId = getUserId();
-      if (!userId) {
-        sendResponse({ success: false, error: 'Could not find User ID. Please refresh the page.' });
-        return true;
-      }
-      
-      fetchFollowersApi(userId, message.limit || 1000).then(followers => {
-        const pageData = extractFollowerData();
-        // Merge fetched followers
-        pageData.followers = followers;
-        sendResponse({ success: true, data: pageData });
-      }).catch(err => {
-        sendResponse({ success: false, error: err.message });
-      });
+      (async () => {
+        let userId = getUserId();
+        const username = window.location.pathname.replace(/\//g, '');
+        
+        if (!userId && username) {
+          try {
+            const res = await fetch(`https://www.instagram.com/web/search/topsearch/?context=blended&query=${username}`);
+            const data = await res.json();
+            const user = data.users.find(u => u.user.username === username);
+            if (user) userId = user.user.pk;
+          } catch(e) {
+            console.error('Failed to get userId via search API:', e);
+          }
+        }
+
+        if (!userId) {
+          sendResponse({ success: false, error: 'Could not find User ID. Please refresh the page.' });
+          return;
+        }
+        
+        try {
+          const followers = await fetchFollowersApi(userId, message.limit || 1000);
+          const pageData = extractFollowerData();
+          pageData.followers = followers;
+          sendResponse({ success: true, data: pageData });
+        } catch(err) {
+          sendResponse({ success: false, error: err.message });
+        }
+      })();
       return true; // Keep channel open for async response
     }
     return true;

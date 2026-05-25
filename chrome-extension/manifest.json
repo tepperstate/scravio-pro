@@ -23,10 +23,18 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": ["https://www.instagram.com/*"],
       "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.onrender.com/*", "http://localhost:*/*"],
+      "js": ["bridge.js"],
       "run_at": "document_idle"
     }
   ]

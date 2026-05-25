@@ -67,66 +67,87 @@ class TikTokScraper(BaseScraper):
             print(f"Error fetching TikTok profile {profile_identifier}: {e}")
             return await self._fetch_profile_web(profile_identifier.lstrip('@'))
 
+    USER_AGENTS = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1'
+    ]
+
     async def _fetch_profile_web(self, username: str) -> Optional[dict]:
-        """Fetch TikTok profile via web scraping"""
+        """Fetch TikTok profile via web scraping with backoff"""
         import requests
+        import time
+        import random
         from app.services.proxy_manager import proxy_manager
         
-        try:
-            url = f"https://www.tiktok.com/@{username.lstrip('@')}"
-            proxy = proxy_manager.get_proxy()
-            response = requests.get(
-                url,
-                headers={
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/json',
-                },
-                proxies=proxy,
-                timeout=10
-            )
+        url = f"https://www.tiktok.com/@{username.lstrip('@')}"
+        max_retries = 3
+        
+        for attempt in range(max_retries):
+            try:
+                proxy = proxy_manager.get_proxy()
+                user_agent = random.choice(self.USER_AGENTS)
+                
+                response = requests.get(
+                    url,
+                    headers={
+                        'User-Agent': user_agent,
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Sec-Fetch-Site': 'none',
+                        'Sec-Fetch-Mode': 'navigate',
+                        'Sec-Fetch-Dest': 'document'
+                    },
+                    proxies=proxy,
+                    timeout=15
+                )
 
-            if response.status_code == 200:
-                # TikTok embeds JSON data in the page
-                import re
+                if response.status_code == 200:
+                    # TikTok embeds JSON data in the page
+                    import re
+                    
+                    # Try to find embedded JSON
+                    patterns = [
+                        r'"user":(\{[^}]+\})',
+                        r'"uniqueId":"([^"]+)".*?"nickname":"([^"]+)".*?"signature":"([^"]*)"',
+                    ]
+                    
+                    for pattern in patterns:
+                        match = re.search(pattern, response.text)
+                        if match:
+                            # Parse the JSON data
+                            try:
+                                import json
+                                data = json.loads(match.group(0).replace('"user":', '').replace('\\"', '"'))
+                                return {
+                                    'username': data.get('uniqueId', username),
+                                    'nickname': data.get('nickname', ''),
+                                    'signature': data.get('signature', ''),
+                                    'bio': data.get('signature', ''),
+                                    'follower_count': data.get('followerCount', 0),
+                                    'following_count': data.get('followingCount', 0),
+                                    'heart_count': data.get('heartCount', 0),
+                                    'video_count': data.get('videoCount', 0),
+                                    'verified': data.get('verified', False),
+                                    'tiktok_url': url,
+                                }
+                            except:
+                                pass
+                            
+                    # Simpler extraction from text
+                    return {
+                        'username': username,
+                        'tiktok_url': url,
+                        'raw_html': response.text[:3000],
+                    }
+                    
+            except Exception as e:
+                print(f"TikTok scrape attempt {attempt+1} failed: {e}")
                 
-                # Try to find embedded JSON
-                patterns = [
-                    r'"user":(\{[^}]+\})',
-                    r'"uniqueId":"([^"]+)".*?"nickname":"([^"]+)".*?"signature":"([^"]*)"',
-                ]
+            if attempt < max_retries - 1:
+                await asyncio.sleep(2 ** attempt + random.uniform(0.5, 1.5))
                 
-                for pattern in patterns:
-                    match = re.search(pattern, response.text)
-                    if match:
-                        # Parse the JSON data
-                        try:
-                            import json
-                            data = json.loads(match.group(0).replace('"user":', '').replace('\\"', '"'))
-                            return {
-                                'username': data.get('uniqueId', username),
-                                'nickname': data.get('nickname', ''),
-                                'signature': data.get('signature', ''),
-                                'bio': data.get('signature', ''),
-                                'follower_count': data.get('followerCount', 0),
-                                'following_count': data.get('followingCount', 0),
-                                'heart_count': data.get('heartCount', 0),
-                                'video_count': data.get('videoCount', 0),
-                                'verified': data.get('verified', False),
-                                'tiktok_url': url,
-                            }
-                        except:
-                            pass
-                        
-                # Simpler extraction from text
-                return {
-                    'username': username,
-                    'tiktok_url': url,
-                    'raw_html': response.text[:3000],
-                }
-                
-        except Exception as e:
-            print(f"TikTok web scraping error: {e}")
-            
         return None
 
     def _parse_tiktok_response(self, data: dict) -> dict:

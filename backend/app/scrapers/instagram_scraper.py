@@ -168,36 +168,75 @@ class InstagramScraper(BaseScraper):
 class InstagramAPIScraper:
     """Alternative scraper using public endpoints (limited)"""
     
+    USER_AGENTS = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0'
+    ]
+    
     @staticmethod
     async def get_profile_public(username: str) -> Optional[dict]:
-        """Get public profile info via web scraping"""
+        """Get public profile info via web scraping with exponential backoff"""
         import requests
+        import time
+        import random
         from app.services.proxy_manager import proxy_manager
         
-        try:
-            proxy = proxy_manager.get_proxy()
-            response = requests.get(
-                f"https://instagram.com/{username}/",
-                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'},
-                proxies=proxy,
-                timeout=10
-            )
-            
-            if response.status_code == 200:
-                # Find JSON data in page
-                import re
-                pattern = r'"username":"([^"]+)".*?"full_name":"([^"]+)".*?"biography":"([^"]+)".*?"followers_count":(\d+)'
-                match = re.search(pattern, response.text)
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                proxy = proxy_manager.get_proxy()
+                user_agent = random.choice(InstagramAPIScraper.USER_AGENTS)
                 
-                if match:
-                    return {
-                        'username': match.group(1),
-                        'full_name': match.group(2),
-                        'biography': match.group(3).replace('\\n', '\n'),
-                        'followers': int(match.group(4)),
-                        'instagram_url': f"https://instagram.com/{match.group(1)}",
-                    }
-        except Exception as e:
-            print(f"Error: {e}")
-            
+                response = requests.get(
+                    f"https://instagram.com/{username}/",
+                    headers={
+                        'User-Agent': user_agent,
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                        'Sec-Fetch-Dest': 'document',
+                        'Sec-Fetch-Mode': 'navigate',
+                        'Sec-Fetch-Site': 'none'
+                    },
+                    proxies=proxy,
+                    timeout=15
+                )
+                
+                if response.status_code == 200:
+                    # Find JSON data in page - multiple regex strategies
+                    import re
+                    
+                    # Pattern 1: Direct meta tags
+                    followers_meta = re.search(r'<meta content="([\d.,]+)\s*Followers', response.text, re.IGNORECASE)
+                    
+                    # Pattern 2: Shared data JSON
+                    pattern = r'"username":"([^"]+)".*?"full_name":"([^"]+)".*?"biography":"([^"]*)".*?"followers_count":(\d+)'
+                    match = re.search(pattern, response.text)
+                    
+                    if match:
+                        return {
+                            'username': match.group(1),
+                            'full_name': match.group(2),
+                            'biography': match.group(3).replace('\\n', '\n'),
+                            'followers': int(match.group(4)),
+                            'instagram_url': f"https://instagram.com/{match.group(1)}",
+                        }
+                    elif followers_meta:
+                        followers_str = followers_meta.group(1).replace(',', '').replace('.', '')
+                        return {
+                            'username': username,
+                            'full_name': username,
+                            'biography': '',
+                            'followers': int(followers_str) if followers_str.isdigit() else 0,
+                            'instagram_url': f"https://instagram.com/{username}",
+                        }
+                        
+            except Exception as e:
+                print(f"Instagram scrape attempt {attempt+1} failed: {e}")
+                
+            if attempt < max_retries - 1:
+                # Exponential backoff
+                await asyncio.sleep(2 ** attempt + random.uniform(0.5, 1.5))
+                
         return None

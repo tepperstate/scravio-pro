@@ -62,39 +62,56 @@ class FacebookScraper(BaseScraper):
             print(f"Error fetching Facebook profile {profile_identifier}: {e}")
             return await self._fetch_page_web(profile_identifier)
 
+    USER_AGENTS = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0'
+    ]
+
     async def _fetch_page_web(self, identifier: str) -> Optional[dict]:
-        """Fetch Facebook page via web scraping"""
+        """Fetch Facebook page via web scraping with backoff"""
         import requests
+        import random
+        import time
         from app.services.proxy_manager import proxy_manager
         
-        try:
-            # Handle both page names and IDs
-            if identifier.isdigit():
-                url = f"https://www.facebook.com/pages/public/{identifier}"
-            else:
-                url = f"https://www.facebook.com/{identifier.lstrip('/')}"
+        # Handle both page names and IDs
+        if identifier.isdigit():
+            url = f"https://www.facebook.com/pages/public/{identifier}"
+        else:
+            url = f"https://www.facebook.com/{identifier.lstrip('/')}"
             
-            proxy = proxy_manager.get_proxy()
-            response = requests.get(
-                url,
-                headers={
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Accept': 'text/html,application/xhtml+xml',
-                },
-                proxies=proxy,
-                timeout=10
-            )
-
-            if response.status_code == 200:
-                # Facebook has complex page rendering
-                # Extract what we can from the HTML
-                data = self._extract_from_html(response.text)
-                data['facebook_url'] = url
-                return data
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                proxy = proxy_manager.get_proxy()
+                user_agent = random.choice(self.USER_AGENTS)
                 
-        except Exception as e:
-            print(f"Facebook web scraping error: {e}")
-            
+                response = requests.get(
+                    url,
+                    headers={
+                        'User-Agent': user_agent,
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Sec-Fetch-Site': 'none',
+                        'Sec-Fetch-Mode': 'navigate',
+                        'Sec-Fetch-Dest': 'document'
+                    },
+                    proxies=proxy,
+                    timeout=15
+                )
+
+                if response.status_code == 200:
+                    data = self._extract_from_html(response.text)
+                    data['facebook_url'] = url
+                    return data
+                    
+            except Exception as e:
+                print(f"Facebook scrape attempt {attempt+1} failed: {e}")
+                
+            if attempt < max_retries - 1:
+                await asyncio.sleep(2 ** attempt + random.uniform(0.5, 1.5))
+                
         return None
 
     def _extract_from_html(self, html: str) -> dict:

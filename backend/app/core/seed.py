@@ -18,10 +18,10 @@ def seed_db():
 
     db = SessionLocal()
     try:
-        # 2. Create 2 Admin users with 10 million credits
+        # 2. Create 2 Admin users with 2 million credits
         admins = [
-            {"email": "admin1@SocialScravio.com", "full_name": "Admin One", "credits": 10000000},
-            {"email": "admin2@SocialScravio.com", "full_name": "Admin Two", "credits": 10000000},
+            {"email": "admin1@SocialScravio.com", "full_name": "Admin One", "credits": 2000000},
+            {"email": "admin2@SocialScravio.com", "full_name": "Admin Two", "credits": 2000000},
         ]
         
         for admin_data in admins:
@@ -44,7 +44,7 @@ def seed_db():
                 user.credits_remaining = admin_data["credits"]
                 print(f"Updated existing Admin: {admin_data['email']}")
                 
-        # 3. Create 5 Regular users with 1 million credits
+        # 3. Create 5 Regular users with 2 million credits
         for i in range(1, 6):
             email = f"user{i}@example.com"
             user = db.query(User).filter(User.email == email).first()
@@ -56,12 +56,12 @@ def seed_db():
                     is_active=True,
                     is_premium=True,
                     is_admin=False,
-                    credits_remaining=1000000
+                    credits_remaining=2000000
                 )
                 db.add(user)
-                print(f"Created User: {email} with 1,000,000 credits.")
+                print(f"Created User: {email} with 2,000,000 credits.")
             else:
-                user.credits_remaining = 1000000
+                user.credits_remaining = 2000000
                 print(f"Updated existing User: {email}")
 
         db.commit()

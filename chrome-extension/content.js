@@ -468,9 +468,11 @@
         } else {
           hasNext = false;
         }
+      if (fetchedFollowersList.length < 100 && !hasNext) {
+        document.getElementById('scravio-status').innerText = `Finished. Total: ${fetchedFollowersList.length} (Note: Instagram hides the full list for large/private accounts)`;
+      } else {
+        document.getElementById('scravio-status').innerText = `Finished. Total: ${fetchedFollowersList.length}`;
       }
-
-      document.getElementById('scravio-status').innerText = `Finished. Total: ${fetchedFollowersList.length}`;
     } catch (err) {
       document.getElementById('scravio-status').innerText = 'Error: ' + err.message;
       console.error(err);

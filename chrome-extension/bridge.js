@@ -9,8 +9,6 @@
     if (token) {
       // Send token to the extension background script
       chrome.runtime.sendMessage(
-        "klhckdfmabjajononcligmdocabdkcdk", // We don't know the extension ID yet if it's unpacked, so we use generic postMessage or externally connectable.
-        // Actually, since this is a content script injected by the extension, we can just use chrome.runtime.sendMessage directly!
         { action: 'saveToken', token: token },
         function(response) {
           if (chrome.runtime.lastError) {

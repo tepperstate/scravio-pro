@@ -144,6 +144,10 @@ class AdminStats(BaseModel):
     total_credits_distributed: int
 
 
+class CampaignUpdateRequest(BaseModel):
+    name: Optional[str] = None
+
+
 class UserUpdateRequest(BaseModel):
     is_admin: Optional[bool] = None
     is_active: Optional[bool] = None

@@ -13,7 +13,7 @@ from app.core.config import settings
 from app.models.user import User, Campaign, ScrapedEmail, PlatformEnum, VerificationStatusEnum
 from app.schemas.schemas import (
     ScraperRequest, ScraperImportRequest, ScraperResponse, EmailData, EmailListResponse,
-    CampaignStatus, CreditBalance, PlatformEnum as PlatformEnumSchema
+    CampaignStatus, CreditBalance, PlatformEnum as PlatformEnumSchema, CampaignUpdateRequest
 )
 from app.scrapers import get_scraper
 from app.services.dedup_engine import GlobalDeduplication, DeduplicationEngine
@@ -178,6 +178,74 @@ async def get_campaign_status(
         created_at=campaign.created_at,
         completed_at=campaign.completed_at
     )
+
+
+@router.patch("/campaign/{campaign_id}", response_model=CampaignStatus)
+async def update_campaign(
+    campaign_id: int,
+    request: CampaignUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Update a campaign's details"""
+    campaign = db.query(Campaign).filter(
+        Campaign.id == campaign_id,
+        Campaign.user_id == current_user.id
+    ).first()
+    
+    if not campaign:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Campaign not found"
+        )
+        
+    if request.name is not None:
+        campaign.name = request.name
+        
+    db.commit()
+    db.refresh(campaign)
+    
+    progress = 0.0
+    if campaign.status == "completed":
+        progress = 100.0
+    elif campaign.status == "running" and campaign.total_scraped > 0:
+        progress = 50.0
+        
+    return CampaignStatus(
+        id=campaign.id,
+        name=campaign.name,
+        platform=campaign.platform.value,
+        status=campaign.status,
+        total_scraped=campaign.total_scraped,
+        valid_emails=campaign.valid_emails,
+        progress=progress,
+        created_at=campaign.created_at,
+        completed_at=campaign.completed_at
+    )
+
+
+@router.delete("/campaign/{campaign_id}")
+async def delete_campaign(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Delete a campaign"""
+    campaign = db.query(Campaign).filter(
+        Campaign.id == campaign_id,
+        Campaign.user_id == current_user.id
+    ).first()
+    
+    if not campaign:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Campaign not found"
+        )
+        
+    db.delete(campaign)
+    db.commit()
+    
+    return {"status": "success", "message": "Campaign deleted"}
 
 
 @router.get("/campaigns", response_model=List[CampaignStatus])

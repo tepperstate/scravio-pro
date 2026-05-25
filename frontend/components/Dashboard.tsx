@@ -165,7 +165,7 @@ export default function Dashboard({ onBack }: DashboardProps) {
     reader.onload = async (event) => {
       try {
         const text = event.target?.result as string;
-        const rows = text.split('\\n');
+        const rows = text.split(/\r?\n/);
         if (rows.length < 2) {
           toast.error('CSV file is empty or invalid.');
           return;
@@ -179,9 +179,9 @@ export default function Dashboard({ onBack }: DashboardProps) {
           
           // Basic CSV parsing handling quotes
           // Split by comma but respect quotes
-          const match = row.match(/(".*?"|[^",\\s]+)(?=\\s*,|\\s*$)/g);
+          const match = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
           if (match && match.length >= 2) {
-            let username = match[1].replace(/^"|"$/g, '').trim();
+            let username = match[1].replace(/^"|"$/g, '').replace(/\/+$/, '').trim();
             if (username) {
               usernames.push(username);
             }

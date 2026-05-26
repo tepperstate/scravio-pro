@@ -1,186 +1,115 @@
 """
-Twitter/X Email Scraper
-Extract emails from Twitter/X public profiles
+Twitter Email Scraper
+Extract emails from Twitter using public Nitter instances (bypassing authentication)
 """
 
 import asyncio
 import re
+import random
 from typing import List, Optional, Dict
-import snscrape.modules.twitter as sntwitter
-from datetime import datetime
+import httpx
+from bs4 import BeautifulSoup
 
 from app.scrapers.base_scraper import BaseScraper, ProfileResult
 
-
 class TwitterScraper(BaseScraper):
-    """Scraper for Twitter/X profiles"""
+    """Scraper for Twitter profiles using Nitter"""
     
     platform_name = "twitter"
     base_url = "https://twitter.com"
 
-    async def scrape(self, query: str, max_results: int = 50,
-                     progress_callback=None) -> List[ProfileResult]:
-        """
-        Scrape Twitter for emails
-        
-        Args:
-            query: Can be a username, search query, or hashtag
-            max_results: Maximum profiles to scrape
-        """
+    NITTER_INSTANCES = [
+        "https://nitter.net",
+        "https://nitter.cz",
+        "https://nitter.privacydev.net",
+        "https://nitter.projectsegfau.lt"
+    ]
+
+    USER_AGENTS = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    ]
+
+    async def scrape(self, query: str, max_results: int = 50, progress_callback=None) -> List[ProfileResult]:
+        """Scrape Twitter for emails"""
         results = []
 
-        # Determine search type
-        if query.startswith('#'):
-            # Hashtag search
-            profiles = await self._search_by_hashtag(query, max_results)
-        elif query.startswith('@'):
-            # Direct username
-            profile_id = query.lstrip('@')
-            result = await self._scrape_profile(profile_id)
-            results.append(result)
-        else:
-            # Search for profiles
-            profiles = await self._search_profiles(query, max_results)
-            for profile_id in profiles:
-                result = await self._scrape_profile(profile_id)
+        if 'twitter.com' in query.lower() or 'x.com' in query.lower():
+            username = self._extract_username(query)
+            if username:
+                result = await self._scrape_profile(username)
                 results.append(result)
-                await self.rate_limit()
+        else:
+            username = query.lstrip('@')
+            result = await self._scrape_profile(username)
+            results.append(result)
 
         return results
 
     async def _fetch_profile_data(self, profile_identifier: str) -> Optional[dict]:
-        """Fetch Twitter profile data"""
-        try:
-            username = profile_identifier.lstrip('@')
-            
-            # Get user profile
-            user = sntwitter.TwitterUserScraper(username).get_items()
-            user_data = next(user, None)
-            
-            if not user_data:
-                return None
-
-            return {
-                'username': user_data.username,
-                'name': user_data.displayname,
-                'description': user_data.description,
-                'followers_count': user_data.followers,
-                'following_count': user_data.following,
-                'tweets_count': user_data.statuses,
-                'created': user_data.date.timestamp() if hasattr(user_data, 'date') else None,
-                'location': user_data.location,
-                'verified': user_data.verified,
-                'twitter_url': f"https://twitter.com/{user_data.username}",
-                'raw_bio': user_data.description,
-            }
-        except Exception as e:
-            print(f"Error fetching Twitter profile {profile_identifier}: {e}")
-            return None
-
-    async def _search_profiles(self, query: str, max_results: int) -> List[str]:
-        """Search for Twitter profiles by keyword"""
-        profiles = []
+        """Fetch profile from a random working Nitter instance"""
+        random.shuffle(self.NITTER_INSTANCES)
         
-        try:
-            # Search for users matching the query
-            search_query = f"from:{query}" if not query.startswith('#') else query
-            
-            for i, tweet in enumerate(sntwitter.TwitterSearchScraper(search_query).get_items()):
-                if i >= max_results:
-                    break
-                
-                if tweet.user and tweet.user.username not in profiles:
-                    profiles.append(tweet.user.username)
+        for instance in self.NITTER_INSTANCES:
+            try:
+                url = f"{instance}/{profile_identifier}"
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    res = await client.get(url, headers={'User-Agent': self.USER_AGENTS[0]})
                     
-        except Exception as e:
-            print(f"Error searching profiles: {e}")
-            
-        return profiles
-
-    async def _search_by_hashtag(self, hashtag: str, max_results: int) -> List[str]:
-        """Get profiles that tweeted with a hashtag"""
-        profiles = []
-        
-        try:
-            for i, tweet in enumerate(sntwitter.TwitterHashtagScraper(hashtag).get_items()):
-                if i >= max_results:
-                    break
+                    if res.status_code == 200:
+                        data = self._extract_from_html(res.text)
+                        data['twitter_url'] = f"https://twitter.com/{profile_identifier}"
+                        data['username'] = profile_identifier
+                        return data
+            except Exception as e:
+                print(f"Failed to fetch from {instance}: {e}")
+                continue
                 
-                if tweet.user and tweet.user.username not in profiles:
-                    profiles.append(tweet.user.username)
-                    
-        except Exception as e:
-            print(f"Error searching by hashtag: {e}")
-            
-        return profiles
-
-    async def get_followers(self, username: str, max_results: int = 1000) -> List[str]:
-        """Get followers of a user"""
-        followers = []
-        
-        try:
-            for i, follower in enumerate(sntwitter.TwitterFollowersScraper(username).get_items()):
-                if i >= max_results:
-                    break
-                followers.append(follower.username)
-        except Exception as e:
-            print(f"Error getting followers: {e}")
-            
-        return followers
-
-    def extract_emails_from_bio(self, bio: str) -> List[str]:
-        """Extract emails from Twitter bio"""
-        emails = []
-        
-        # Twitter bio can contain emails
-        email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
-        found = re.findall(email_pattern, bio)
-        
-        for email in found:
-            # Filter out common twitter handles that look like emails
-            if '@twitter' not in email.lower() and '@x.com' not in email.lower():
-                emails.append(email.lower())
-                
-        return emails
-
-
-class TwitterAPIv2Scraper:
-    """Scraper using Twitter API v2 (requires API key)"""
-    
-    def __init__(self, bearer_token: str):
-        self.bearer_token = bearer_token
-        self.base_url = "https://api.twitter.com/2"
-    
-    async def get_user_by_username(self, username: str) -> Optional[dict]:
-        """Get user info via API v2"""
-        import requests
-        
-        url = f"{self.base_url}/users/by/username/{username.lstrip('@')}"
-        headers = {"Authorization": f"Bearer {self.bearer_token}"}
-        
-        try:
-            response = requests.get(url, headers=headers, timeout=10)
-            if response.status_code == 200:
-                data = response.json()
-                return data.get('data')
-        except Exception as e:
-            print(f"API Error: {e}")
-            
         return None
 
-    async def get_user_tweets(self, user_id: str, max_results: int = 100) -> List[dict]:
-        """Get user's recent tweets"""
-        import requests
+    def _extract_from_html(self, html: str) -> dict:
+        data = {}
+        soup = BeautifulSoup(html, 'html.parser')
         
-        url = f"{self.base_url}/users/{user_id}/tweets"
-        headers = {"Authorization": f"Bearer {self.bearer_token}"}
-        params = {"max_results": min(max_results, 100)}
-        
-        try:
-            response = requests.get(url, headers=headers, params=params, timeout=10)
-            if response.status_code == 200:
-                return response.json().get('data', [])
-        except Exception as e:
-            print(f"API Error: {e}")
+        # Nitter DOM parsing
+        name_tag = soup.find('a', class_='profile-card-fullname')
+        if name_tag:
+            data['full_name'] = name_tag.text.strip()
             
-        return []
+        bio_tag = soup.find('div', class_='profile-bio')
+        if bio_tag:
+            data['biography'] = bio_tag.text.strip()
+            
+        loc_tag = soup.find('div', class_='profile-location')
+        if loc_tag:
+            data['location'] = loc_tag.text.strip()
+            
+        # Stats
+        stat_tags = soup.find_all('span', class_='profile-stat-num')
+        if len(stat_tags) >= 3:
+            data['following'] = int(stat_tags[1].text.replace(',', ''))
+            data['followers'] = int(stat_tags[2].text.replace(',', ''))
+            
+        return data
+
+    def _extract_username(self, url: str) -> Optional[str]:
+        match = re.search(r'(?:twitter\.com|x\.com)/([a-zA-Z0-9_]+)', url)
+        if match:
+            return match.group(1)
+        return None
+
+    def extract_emails_from_about(self, about_text: str) -> List[str]:
+        emails = []
+        email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+        # Also catch formatted emails like name[at]domain.com
+        obfuscated_pattern = r'([a-zA-Z0-9._%+-]+)\s*(?:\[at\]|\(at\)|@)\s*([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})'
+        
+        found = re.findall(email_pattern, about_text)
+        obfuscated = re.findall(obfuscated_pattern, about_text)
+        
+        for email in found:
+            emails.append(email.lower())
+            
+        for user, domain in obfuscated:
+            emails.append(f"{user}@{domain}".lower())
+            
+        return list(set(emails))

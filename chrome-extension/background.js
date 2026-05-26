@@ -1,9 +1,9 @@
-// Scravio Extension Background Script
+// SuperScravio Extension Background Script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'saveToken') {
     if (request.token) {
       chrome.storage.local.set({ scravio_token: request.token }, () => {
-        console.log('[Scravio Extension] Token saved securely.');
+        console.log('[SuperScravio] Token saved securely.');
         sendResponse({ success: true });
       });
       return true; // Keep message channel open for async response

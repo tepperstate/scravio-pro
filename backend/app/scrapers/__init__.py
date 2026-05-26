@@ -4,7 +4,7 @@ from app.scrapers.twitter_scraper import TwitterScraper
 from app.scrapers.youtube_scraper import YouTubeScraper
 from app.scrapers.linkedin_scraper import LinkedInScraper, LinkedInEmailFinder
 from app.scrapers.tiktok_scraper import TikTokScraper
-from app.scrapers.facebook_scraper import FacebookScraper, FacebookGroupScraper
+from app.scrapers.facebook_scraper import FacebookScraper
 
 __all__ = [
     'BaseScraper',
@@ -16,7 +16,6 @@ __all__ = [
     'LinkedInEmailFinder',
     'TikTokScraper',
     'FacebookScraper',
-    'FacebookGroupScraper',
 ]
 
 

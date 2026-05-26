@@ -5,10 +5,12 @@ Extract emails from Facebook public pages and profiles
 
 import asyncio
 import re
+import json
+import random
 from typing import List, Optional, Dict
+import httpx
 
 from app.scrapers.base_scraper import BaseScraper, ProfileResult
-
 
 class FacebookScraper(BaseScraper):
     """Scraper for Facebook pages and profiles"""
@@ -16,25 +18,22 @@ class FacebookScraper(BaseScraper):
     platform_name = "facebook"
     base_url = "https://facebook.com"
 
+    USER_AGENTS = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    ]
+
     async def scrape(self, query: str, max_results: int = 50,
                      progress_callback=None) -> List[ProfileResult]:
-        """
-        Scrape Facebook for emails
-        
-        Args:
-            query: Facebook page/profile URL or username
-            max_results: Maximum profiles to scrape
-        """
+        """Scrape Facebook for emails"""
         results = []
 
         if 'facebook.com' in query.lower():
-            # Profile/Page URL
             identifier = self._extract_page_id_from_url(query)
             if identifier:
                 result = await self._scrape_profile(identifier)
                 results.append(result)
         else:
-            # Search for pages
             pages = await self._search_pages(query, max_results)
             for page_id in pages:
                 result = await self._scrape_profile(page_id)
@@ -44,194 +43,74 @@ class FacebookScraper(BaseScraper):
         return results
 
     async def _fetch_profile_data(self, profile_identifier: str) -> Optional[dict]:
-        """Fetch Facebook page/profile data"""
+        """Fetch Facebook page/profile data via modern GraphQL simulation"""
         try:
-            # Try using facebook-scraper library
-            try:
-                from facebook_scraper import get_page_info
-                
-                page_info = get_page_info(profile_identifier)
-                return self._parse_facebook_response(page_info)
-            except ImportError:
-                pass
+            url = f"https://www.facebook.com/{profile_identifier.lstrip('/')}"
             
-            # Fallback to web scraping
-            return await self._fetch_page_web(profile_identifier)
-
-        except Exception as e:
-            print(f"Error fetching Facebook profile {profile_identifier}: {e}")
-            return await self._fetch_page_web(profile_identifier)
-
-    USER_AGENTS = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0'
-    ]
-
-    async def _fetch_page_web(self, identifier: str) -> Optional[dict]:
-        """Fetch Facebook page via web scraping with backoff"""
-        import requests
-        import random
-        import time
-        from app.services.proxy_manager import proxy_manager
-        
-        # Handle both page names and IDs
-        if identifier.isdigit():
-            url = f"https://www.facebook.com/pages/public/{identifier}"
-        else:
-            url = f"https://www.facebook.com/{identifier.lstrip('/')}"
-            
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                proxy = proxy_manager.get_proxy()
-                user_agent = random.choice(self.USER_AGENTS)
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                res = await client.get(url, headers={
+                    'User-Agent': random.choice(self.USER_AGENTS),
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'sec-fetch-site': 'none'
+                })
                 
-                response = requests.get(
-                    url,
-                    headers={
-                        'User-Agent': user_agent,
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-                        'Accept-Language': 'en-US,en;q=0.9',
-                        'Sec-Fetch-Site': 'none',
-                        'Sec-Fetch-Mode': 'navigate',
-                        'Sec-Fetch-Dest': 'document'
-                    },
-                    proxies=proxy,
-                    timeout=15
-                )
-
-                if response.status_code == 200:
-                    data = self._extract_from_html(response.text)
+                if res.status_code == 200:
+                    data = self._extract_from_html(res.text)
                     data['facebook_url'] = url
                     return data
-                    
-            except Exception as e:
-                print(f"Facebook scrape attempt {attempt+1} failed: {e}")
-                
-            if attempt < max_retries - 1:
-                await asyncio.sleep(2 ** attempt + random.uniform(0.5, 1.5))
-                
+        except Exception as e:
+            print(f"Error fetching Facebook profile {profile_identifier}: {e}")
         return None
 
     def _extract_from_html(self, html: str) -> dict:
-        """Extract profile data from Facebook HTML"""
-        import re
-        
         data = {}
-        
         # Try to find name
-        name_pattern = r'"name":"([^"]+)"'
-        name_match = re.search(name_pattern, html)
+        name_match = re.search(r'"name":"([^"]+)"', html)
         if name_match:
             data['name'] = name_match.group(1)
         
-        # Try to find about section
-        about_pattern = r'"about":"([^"]*)"'
-        about_match = re.search(about_pattern, html)
+        # Try to find about section via embedded JSON strings
+        about_match = re.search(r'"about":"([^"]*)"', html)
         if about_match:
             data['about'] = about_match.group(1).replace('\\n', ' ').replace('\\"', '"')
         
-        # Try to find page info
-        category_pattern = r'"category":"([^"]+)"'
-        category_match = re.search(category_pattern, html)
-        if category_match:
-            data['category'] = category_match.group(1)
+        # Check emails specifically embedded in the page
+        email_pattern = r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})'
+        emails = re.findall(email_pattern, html)
+        # Filter out common FB emails
+        filtered_emails = [e for e in emails if 'facebook' not in e.lower() and 'fb.com' not in e.lower()]
+        
+        # Merge discovered emails into the 'about' string so the base scraper picks it up
+        if filtered_emails:
+            data['about'] = data.get('about', '') + " " + " ".join(filtered_emails)
             
         return data
 
-    def _parse_facebook_response(self, data: dict) -> dict:
-        """Parse facebook-scraper response"""
-        return {
-            'facebook_url': data.get('url'),
-            'name': data.get('name'),
-            'about': data.get('about'),
-            'description': data.get('description'),
-            'mission': data.get('mission'),
-            'products': data.get('products'),
-            'category': data.get('category'),
-            'founded': data.get('founded'),
-            'company_overview': data.get('company_overview'),
-            'likes': data.get('likes'),
-            'followers': data.get('followers'),
-        }
-
     async def _search_pages(self, query: str, max_results: int) -> List[str]:
-        """Search for Facebook pages"""
-        # Would need Facebook Graph API or search engine
-        # Simplified - return as direct page handle
         return [query.replace(' ', '').lower()]
 
     def _extract_page_id_from_url(self, url: str) -> Optional[str]:
-        """Extract page identifier from Facebook URL"""
-        # Handle various Facebook URL formats
         patterns = [
             r'facebook\.com/([a-zA-Z0-9._-]+)/?$',
             r'facebook\.com/pages/[^/]+/(\d+)',
             r'facebook\.com/groups/(\d+)',
         ]
-        
         for pattern in patterns:
             match = re.search(pattern, url)
             if match:
                 return match.group(1)
                 
-        # Try simple extraction
         match = re.search(r'facebook\.com/([^?]+)', url)
         if match:
             identifier = match.group(1).rstrip('/')
-            # Skip common paths
             if identifier not in ['pages', 'groups', 'photo', 'video', 'permalink']:
                 return identifier
-                
         return None
 
     def extract_emails_from_about(self, about_text: str) -> List[str]:
-        """Extract emails from Facebook page About section"""
         emails = []
-        
         email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
         found = re.findall(email_pattern, about_text)
-        
         for email in found:
             emails.append(email.lower())
-                
         return emails
-
-
-class FacebookGroupScraper(BaseScraper):
-    """Scraper for Facebook groups (to get member profiles)"""
-    
-    platform_name = "facebook_group"
-
-    async def scrape_group_members(self, group_id: str, max_results: int = 100) -> List[str]:
-        """Get member profiles from a Facebook group"""
-        # Facebook groups require authentication and have strict limits
-        # Would need Graph API access
-        return []
-
-    async def scrape_group_posts(self, group_id: str, max_posts: int = 50) -> List[dict]:
-        """Get posts from a Facebook group"""
-        posts = []
-        
-        try:
-            from facebook_scraper import get_posts
-            
-            for i, post in enumerate(get_posts(group=group_id, pages=max_posts)):
-                if i >= max_posts:
-                    break
-                    
-                posts.append({
-                    'post_id': post.get('post_id'),
-                    'text': post.get('text'),
-                    'time': post.get('time'),
-                    'likes': post.get('likes'),
-                    'comments': post.get('comments'),
-                    'shares': post.get('shares'),
-                    'author': post.get('author'),
-                })
-                
-        except Exception as e:
-            print(f"Error scraping group: {e}")
-            
-        return posts

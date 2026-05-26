@@ -1,41 +1,75 @@
 {
   "manifest_version": 3,
-  "name": "SocialScravio IG Follower Export",
-  "version": "1.1.0",
-  "description": "Export Instagram followers and following to CSV, Excel, or JSON - FREE with unlimited exports",
+  "name": "SuperScravio IG Email Extractor",
+  "description": "Unlimited and free Instagram Follower and Email Extractor",
+  "default_locale": "en",
   "permissions": [
-    "activeTab",
-    "storage"
+    "cookies",
+    "storage",
+    "unlimitedStorage"
   ],
   "host_permissions": [
-    "https://www.instagram.com/*"
+    "https://*.instagram.com/*"
   ],
-  "action": {
-    "default_popup": "popup.html",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    }
-  },
   "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
   },
   "background": {
     "service_worker": "background.js"
   },
+  "action": {
+    "default_title": "SuperScravio IG Email Extractor",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png",
+      "48": "icons/48.png",
+      "128": "icons/128.png"
+    }
+  },
   "content_scripts": [
     {
-      "matches": ["https://www.instagram.com/*"],
-      "js": ["content.js"],
-      "run_at": "document_idle"
+      "js": [
+        "bypass.js",
+        "content-script.js"
+      ],
+      "matches": [
+        "*://*.instagram.com/*"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "js": [
+        "bypass.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
     },
     {
       "matches": ["https://*.onrender.com/*", "http://localhost:*/*"],
       "js": ["bridge.js"],
       "run_at": "document_idle"
     }
-  ]
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "injected.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "version": "2.5.2"
 }

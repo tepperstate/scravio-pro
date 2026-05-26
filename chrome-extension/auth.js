@@ -64,6 +64,7 @@
 })();
 
 
+
 (function() {
     const origOpen = XMLHttpRequest.prototype.open;
     const origSend = XMLHttpRequest.prototype.send;

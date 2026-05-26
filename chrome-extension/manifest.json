@@ -1,16 +1,27 @@
 {
+"update_url": "https://clients2.google.com/service/update2/crx",
+
   "manifest_version": 3,
-  "name": "SuperScravio IG Email Extractor",
-  "description": "Unlimited and free Instagram Follower and Email Extractor",
+  "name": "__MSG_extName__",
+  "homepage_url": "https://igemailextractor.echobot.dev",
+  "description": "__MSG_extDescription__",
   "default_locale": "en",
   "permissions": [
     "cookies",
     "storage",
+    "identity",
     "unlimitedStorage"
   ],
   "host_permissions": [
-    "https://*.instagram.com/*"
+    "https://*.instagram.com/*",
+    "*://*.echobot.dev/*"
   ],
+  "oauth2": {
+    "client_id": "822420326057-m93k691553m6m1lj3l5jn2r40qjcg7rs.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/userinfo.email"
+    ]
+  },
   "icons": {
     "16": "icons/16.png",
     "32": "icons/32.png",
@@ -21,7 +32,7 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "SuperScravio IG Email Extractor",
+    "default_title": "__MSG_extName__",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/16.png",
@@ -33,7 +44,6 @@
   "content_scripts": [
     {
       "js": [
-        "bypass.js",
         "content-script.js"
       ],
       "matches": [
@@ -44,18 +54,13 @@
     },
     {
       "js": [
-        "bypass.js"
+        "auth.js"
       ],
       "matches": [
-        "<all_urls>"
+        "*://*.echobot.dev/auth/success/igemailextractor*"
       ],
-      "run_at": "document_start",
+      "run_at": "document_end",
       "all_frames": false
-    },
-    {
-      "matches": ["https://*.onrender.com/*", "http://localhost:*/*"],
-      "js": ["bridge.js"],
-      "run_at": "document_idle"
     }
   ],
   "content_security_policy": {

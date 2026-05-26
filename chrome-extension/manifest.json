@@ -1,6 +1,5 @@
 {
-"update_url": "https://clients2.google.com/service/update2/crx",
-
+  "update_url": "https://clients2.google.com/service/update2/crx",
   "manifest_version": 3,
   "name": "__MSG_extName__",
   "homepage_url": "https://igemailextractor.echobot.dev",
@@ -61,10 +60,26 @@
       ],
       "run_at": "document_end",
       "all_frames": false
+    },
+    {
+      "matches": [
+        "https://*.onrender.com/*",
+        "http://localhost:*/*"
+      ],
+      "js": [
+        "dashboard-bridge.js"
+      ],
+      "run_at": "document_start"
     }
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "externally_connectable": {
+    "matches": [
+      "https://*.onrender.com/*",
+      "http://localhost:*/*"
+    ]
   },
   "web_accessible_resources": [
     {

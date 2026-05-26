@@ -37,13 +37,28 @@ export default function ScraperForm({ platform, onComplete }: ScraperFormProps) 
     setIsLoading(true)
     
     try {
-      await api.post('/scrape/start', {
-        platform: platform,
-        query: query.trim(),
-        max_results: maxResults
-      });
+      if (platform === 'instagram') {
+        // Send message to the extension via our injected bridge
+        window.postMessage({
+          type: 'SCRAVIO_START_SCRAPING',
+          payload: {
+            target: query.trim(),
+            max: maxResults,
+            platform: 'instagram'
+          }
+        }, '*');
+        
+        toast.success(`Sent scraping task to extension for ${query}!`)
+      } else {
+        // Fallback to backend for other platforms
+        await api.post('/scrape/start', {
+          platform: platform,
+          query: query.trim(),
+          max_results: maxResults
+        });
+        toast.success(`Scraping started for ${query} on ${config.name}!`)
+      }
       
-      toast.success(`Scraping started for ${query} on ${config.name}!`)
       onComplete()
     } catch (error: any) {
       const message = error.response?.data?.detail || 'Failed to start scraping. Please try again.';

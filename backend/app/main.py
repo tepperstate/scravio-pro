@@ -10,7 +10,7 @@ import logging
 
 from app.core.config import settings
 from app.core.database import Base, engine
-from app.api import auth, scraping, exports, admin
+from app.api import auth, scraping, exports, admin, extension
 from app.schemas.schemas import HealthCheck
 from app.core.seed import seed_db
 from app.models.user import User
@@ -101,6 +101,7 @@ app.include_router(auth.router, prefix=settings.API_V1_STR)
 app.include_router(scraping.router, prefix=settings.API_V1_STR)
 app.include_router(exports.router, prefix=settings.API_V1_STR)
 app.include_router(admin.router, prefix=settings.API_V1_STR)
+app.include_router(extension.router, prefix=settings.API_V1_STR)
 
 
 # Startup event

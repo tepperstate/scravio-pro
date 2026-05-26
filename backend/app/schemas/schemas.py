@@ -66,6 +66,26 @@ class ScraperImportRequest(BaseModel):
     name: Optional[str] = Field(default="Extension Import", description="Name for the campaign")
 
 
+class ExtensionProfileData(BaseModel):
+    username: str
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    follower_count: Optional[int] = None
+    following_count: Optional[int] = None
+    biography: Optional[str] = None
+    external_url: Optional[str] = None
+    public_phone_number: Optional[str] = None
+    is_business_account: Optional[bool] = None
+    category: Optional[str] = None
+    profile_pic_url: Optional[str] = None
+
+
+class ExtensionSyncPayload(BaseModel):
+    campaign_id: Optional[int] = None
+    platform: PlatformEnum = PlatformEnum.INSTAGRAM
+    profiles: List[ExtensionProfileData]
+
+
 class ScraperResponse(BaseModel):
     campaign_id: int
     status: str
